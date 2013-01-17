@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import sys, re, os, inspect
+
 try:
     import numpy
 except:
@@ -9,12 +11,8 @@ except:
     print "\n" 
     sys.exit(1)
 
-import time, sys, re, os, inspect
-
-
 from random import choice
 
-import matplotlib.pylab as plab
 from matplotlib import rc
 
 #~ Paths include
@@ -46,6 +44,29 @@ class myTestClass(DCVizPlotter):
 		subfig3.plot(column3, choice(c))
 		subfig3.set_title('I have $\LaTeX$ support!')
 		
+
+class Blocking(DCVizPlotter):
+    
+    nametag = "blocking_\w+_out\d*\.dat"
+    figMap = {"Fig": ["blockFig"]}
+    
+    nameMap = {"0": r"$\alpha$", "1": r"$\beta$", "": ""}
+    
+    def plot(self, data):
+        
+        Fig, blockFig = self.Fig, self.blockFig
+        blockSize, error = data
+        
+        fileName = os.path.basename(self.filepath)
+        title = "Blocking data %s" % (fileName.split("_")[1] + " %s" % \
+              (self.nameMap[re.findall("blocking_\w+_out(\d*)\.dat", self.filepath)[0]]))
+        
+        blockFig.plot(blockSize, error, 'b+')  
+        
+        blockFig.set_title(title)
+        blockFig.set_xlabel(r'Block size')
+        blockFig.set_ylabel(r'$\sigma$')
+        
 
 class DMC_OUT(DCVizPlotter):
     
@@ -80,7 +101,20 @@ class DMC_OUT(DCVizPlotter):
         N_plot.axes.get_xaxis().set_visible(False)
         N_plot.set_title('Walker population')
         N_plot.ticklabel_format(useOffset=False, axis='y')
+
+class armaMat(DCVizPlotter):
+    
+    nametag = "\w+\.arma"
+    figMap = {"fig": ["subfig"]}
+
+    armaBin = True
+
+    def plot(self, data):
+        x, y = data
+
+        self.subfig.plot(x, y, '*')        
         
+    
         
 class MIN_OUT(DCVizPlotter):
     
@@ -90,11 +124,10 @@ class MIN_OUT(DCVizPlotter):
               "param_fig": ["param_plot", "grad_plot"]}
     
     indexmap = {0: r"\alpha", 1: r"\beta"}
-    c = ['b', 'g']
-    
+    c = ['b', 'g']    
     
     def plot(self, data):
-        
+
         n_params = (self.N - 3)/2
         
         E, Eavg, step = data[:3]
@@ -124,7 +157,7 @@ class MIN_OUT(DCVizPlotter):
             param_plot.plot(data[3 + i], self.c[i/2],label=r'$%s$' % self.indexmap[i/2])    
             grad_plot.plot(data[4 + i], self.c[i/2])
         
-        param_plot.set_ylabel(r'\alpha_i')
+        param_plot.set_ylabel(r'$\alpha_i$')
         param_plot.set_title('Variational parameters')
         param_plot.axes.get_xaxis().set_visible(False)
         param_plot.legend()
