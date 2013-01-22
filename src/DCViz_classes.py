@@ -11,9 +11,7 @@ except:
     print "\n" 
     sys.exit(1)
 
-from random import choice
-
-from matplotlib import rc
+from matplotlib import rc, pylab
 
 #~ Paths include
 classes_thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -21,36 +19,61 @@ sys.path.append(classes_thisDir)
 
 from DCViz_sup import DCVizPlotter
 
-#~ Enabling latex support in matplotlib
-rc('text', usetex=True)
-rc('font', family='serif')
+
+useTex = True
+if useTex:    
+    #~ Enabling latex support in matplotlib
+    rc('text', usetex=True)
+    rc('font', family='serif')
 
 
 class myTestClass(DCVizPlotter):
-	nametag =  'testcase\d\.dat' #filename with regex support
-	
-	#1 figure with 2 subfigures and another figure with only one.
-	figMap = {'fig1': ['subfig1', 'subfig2'], 'fig2': ['subfig3']}
-	
-	def plot(self, data):
-		
-          column1, column2, column3 = data
-          fig1, subfig1, subfig2, fig2, subfig3 = \
-				self.fig1, self.subfig1, self.subfig2, self.fig2, self.subfig3
-		
-          c = ['r', 'g', 'b']
-          subfig1.plot(column1, choice(c))
-          subfig2.plot(column2, choice(c))
-          subfig3.plot(column3, choice(c))
-          subfig3.set_title('I have $\LaTeX$ support!')
+    nametag =  'testcase\d\.dat' #filename with regex support
+    
+    #1 figure with 1 subfigure
+    figMap = {'fig1': ['subfig1']}
+    
+    #skip first row. (the function __str__ is printed here)
+    skipRows = 1    
+    
+    def plot(self, data):
+   
+        column1 = data
+        
+
+        self.subfig1.set_title('I have $\LaTeX$ support!')
+              
+        self.subfig1.set_ylim([-1,1])
+          
+        self.subfig1.plot(column1)
   
-          subfig1.set_xlim([0,12000])
-          subfig1.set_ylim([-1,1])
-          subfig2.set_xlim([0,12000])
-          subfig2.set_ylim([-1,1])
-          subfig3.set_xlim([0,12000])
- 
-		
+
+class myTestClassFamily(DCVizPlotter):
+    nametag =  'testcaseFamily\d\.dat' #filename with regex support
+    
+    #1 figure with 3 subfigures
+    figMap = {'fig1': ['subfig1', 'subfig2', 'subfig3']}
+    
+    #skip first row. (the function __str__ is printed here)
+    skipRows = 1    
+
+    #Using this flag will read all the files matching the nametag
+    #(in the same folder.) and make them aviable in the data arg    
+    isFamilyMember = True
+    familyName = "testcase"
+    
+    def plot(self, data):
+        
+        #figures[0] is 'fig1' figures. the 0'th element is the
+        #self.fig1 itself. Subfigures are always index [1:]
+        mainFig = self.figures[0][0]  
+        mainFig.suptitle('I have $\LaTeX$ support!')        
+        subfigs = self.figures[0][1:]
+    
+        for subfig, fileData in zip(subfigs, data):
+            subfig.plot(fileData)
+            subfig.set_ylim([-1,1])
+        
 
 class Blocking(DCVizPlotter):
     
@@ -118,45 +141,39 @@ class dist_out(DCVizPlotter):
     
     isFamilyMember = True
     familyName = "Dist"
-
-#    def plot(self, data):
-#        
-#        n_p = len(data[0][0])
-#        n = len(data)
-#        print "n_p=", n_p
-#        print "n=", n
-#        X = numpy.zeros(n_p)
-#        Y = numpy.zeros(n_p)
-#        for rMat in data:
-#            x, y = rMat;
-#            self.subfig.plot(x,y, 'r*')
-#            X += x;
-#            Y += y;
-#        
-#        X /= n
-#        Y /= n
-#
-#        self.subfig.plot(X, Y, '*')     
+ 
     def plot(self, data):
-        
         
         n_p = len(data[0][0])        
         n = len(data)
-        scale = n/100
 
 
-        r = numpy.zeros(n)
+        nBins = 100
+        
+
+        r = numpy.zeros(n*n_p)
+        #X = numpy.zeros(n*n_p)
+        #Y = numpy.zeros(n*n_p)
         
         for i in range(n):
             x, y = data[i];
-            r[i] = numpy.sqrt(x**2 + y**2).sum()
-        r /= n_p
-        Y, X = numpy.histogram(r, bins=numpy.linspace(0, r.max(), n/scale))
+            
+            #X[i*n_p: (i+1)*n_p] = x[:]
+            #Y[i*n_p: (i+1)*n_p] = y[:]
+            
+            r[i*n_p: (i+1)*n_p] = numpy.sqrt(x**2 + y**2)
+       
+        #self.subfig.hexbin(X, Y, cmap=pylab.cm.YlOrRd_r)
+       
+        self.subfig.hist(r, nBins, normed=1, facecolor='green', histtype='stepfilled')
+       
+        
+        #Y, X = numpy.histogram(r, bins=numpy.linspace(0, r.max(), nBins))
 
         #w = float(re.findall("np\d+_w(.+)/walker_positions", self.filepath)[0])
         #print w
 
-        self.subfig.plot(X[:-1], Y/Y.sum(), '*')
+        #self.subfig.plot(X[:-1], Y, '*')
        
     
         
