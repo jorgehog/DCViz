@@ -18,6 +18,7 @@ class DCVizPlotter:
     familyFileNames = []
 
     skippedRows = []
+    skipCols = 0
     skipRows = None
     
     nFig = 0
@@ -243,13 +244,12 @@ class DCVizPlotter:
                 return
 
         self.manageFigures()
-        
 
         while (self.shouldReplot()):
             self.clear()
            
             data = self.get_data(setUpFamily = self.isFamilyMember)
-            
+  
             self.plot(data)  
             self.showFigures()
             self.plotted = True
@@ -287,9 +287,9 @@ class DCVizPlotter:
         self.skippedRows = []
         for i in range(skipRows):
             self.skippedRows.append(self.file.readline().strip())
-        
+       
         anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'
-        self.rx = re.compile((r'(%s)\s+' % anyNumber)*(self.Ncols-1) + r'(%s)[\n$]' % anyNumber)    
+        self.rx = re.compile(r'\s*.+?'*self.skipCols + (r'\s*(%s)\s+' % anyNumber)*(self.Ncols - self.skipCols-1) + r'(%s)\s*[\n$]' % anyNumber)    
         
         return "green"
         
