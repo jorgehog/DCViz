@@ -49,6 +49,7 @@ class myTestClass(DCVizPlotter):
         self.subfig1.set_title('I have $\LaTeX$ support!')
               
         self.subfig1.set_ylim([-1,1])
+        self.subfig1.set_xlim([0, 50])
           
         self.subfig1.plot(column1)
   

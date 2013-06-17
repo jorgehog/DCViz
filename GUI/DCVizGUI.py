@@ -163,6 +163,7 @@ class DCVizGUI(QMainWindow):
         filemenu.addSeparator()
 
         cleanAction = QAction("&Reset", self)
+        cleanAction.setShortcut("Shift+R")
         cleanAction.triggered.connect(self.resetModeSelector)
         filemenu.addAction(cleanAction)
         
