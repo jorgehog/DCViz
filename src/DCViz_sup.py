@@ -1,8 +1,61 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, sys, signal, os, struct
+import re, numpy, time, signal, os
 import matplotlib.pylab as plab
 from os.path import join as pjoin
+
+
+class dataGenerator:
+    def __init__(self, data):
+        self.data = data
+        
+        if len(data.shape) == 2:
+            self.n, self.m = data.shape
+            self.getD = self.get2Ddata
+        else:
+            self.m = data.shape
+            self.n = 1
+            self.getD = self.get1Ddata
+        
+        self.shape = data.shape
+        self.fullshape = (self.n, self.m)
+        self.size = data.size
+
+    def get1Ddata(self, i):
+        if i == slice(0, 9223372036854775807, None):
+            return self.data
+        elif i == 0:
+            return self.data
+        elif i == slice(0, 1, None):
+            return self.data
+        else:
+            raise IndexError("Index out of bounds.")
+
+    def get2Ddata(self, i):
+        return self.data[:, i]
+
+    def __iter__(self):
+        for i in range(self.m):
+            yield self.getD(i)
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, i):
+        return self.getD(i)
+
+    def __str__(self):
+        return str(self.data)
+
+    def __add__(self, other):
+            
+        if isinstance(other, dataGenerator):
+            return self.data + other.data
+        else:        
+            raise NotImplementedError("add/sub only works for two datasets. Use 'sum([sum(d) for d in data])'")
+
+    def __sub__(self, other):    
+            return self.data + (-other.data)
 
 
 class DCVizPlotter:
@@ -27,10 +80,11 @@ class DCVizPlotter:
 
     parent = None
     
+    stack = "V"
     
     canStart = False
     
-    def __init__(self, filepath=None, dynamic=False, useGUI=False):
+    def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False):
         self.dynamic = dynamic
         self.useGUI = useGUI
         
@@ -43,6 +97,8 @@ class DCVizPlotter:
         self.filepath = filepath
         self.file = None
         
+        self.toFile = toFile
+        
         signal.signal(signal.SIGINT, self.signal_handler)
         
         if self.Ncols is None and self.fileBin:
@@ -51,7 +107,7 @@ class DCVizPlotter:
     
     
     def signal_handler(self, signal, frame):
-        print "Ending session..."
+        print "[%s] Ending session..." % "DCViz".center(10)
         self.SIGINT_CAPTURED = True
     
     def __str__(self):
@@ -70,11 +126,13 @@ class DCVizPlotter:
                             if re.findall(self.nametag, name) and "tmp" not in name]
            
             familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])
-            self.familySkippedRows = []
-            data = [0]*len(familyMembers)
+            N = len(familyMembers)
+            
+            self.familySkippedRows = [0]*N
+            data = [0]*N
             self.familyFileNames = [0]*len(data)     
             
-            for i in range(len(familyMembers)):
+            for i in range(N):
              
                 self.file = None
                 self.filepath = familyMembers[i]
@@ -88,7 +146,6 @@ class DCVizPlotter:
             return data
             
         data = []
-        
         #attempt to reload file untill data is found.
         t0 = time.time()
         while len(data) == 0:
@@ -108,15 +165,7 @@ class DCVizPlotter:
                
         self.file.close()
         
-        if len(data.shape) > 1:
-            output = [0]*data.shape[1]
-        else:
-            return data
-            
-        for i in range(data.shape[1]):
-            output[i] = data[:,i]
-        
-        return tuple(output)
+        return dataGenerator(data)
     
     def unpackBinFile(self, binFile):
  
@@ -131,9 +180,9 @@ class DCVizPlotter:
             
     
     def unpackArmaMatBin(self, armaFile):   
-    
-        armaFormat = armaFile.readline().strip()
-        
+
+        armaFormat =  armaFile.readline()
+
         n, m = armaFile.readline().strip().split()
         n = int(n)       
         m = int(m)
@@ -144,6 +193,9 @@ class DCVizPlotter:
         return data
     
     def set_figures(self):
+        
+        if self.stack not in ["H", "V"]:
+            self.Error("Invalid stack argument %s. (Choose either H or V)" % self.stack)
         
         s = ""
         i = 0
@@ -156,10 +208,15 @@ class DCVizPlotter:
             nFigs = len(subFigs)
             
             for j in range(nFigs):
-                s += "self.%s = self.%s.add_subplot(%d, 1, %d); " % (subFigs[j], fig, nFigs, j+1)
+                
+                if self.stack == "V":
+                    s += "self.%s = self.%s.add_subplot(%d, 1, %d); " % (subFigs[j], fig, nFigs, j+1)
+                else:
+                    s += "self.%s = self.%s.add_subplot(1, %d, %d); " % (subFigs[j], fig, nFigs, j+1)
                 s += "self.add_subfigure(self.%s, self.i%s); " % (subFigs[j], fig)
             
             i += 1
+
         exec(s)
       
       
@@ -183,7 +240,7 @@ class DCVizPlotter:
         if self.useGUI:
             self.parent.parent.terminalTracker("DCViz", s)
         else:
-            print s
+            print "[%s] %s" % ("DCViz".center(10), s)
 
 
     def waitForGreenLight(self):
@@ -213,7 +270,7 @@ class DCVizPlotter:
         
         if not self.useGUI:
             if not self.plotted:
-                self.show()
+                self.show(drawOnly = self.toFile)
             else:
                 self.show(drawOnly=True)
         else:
@@ -258,15 +315,41 @@ class DCVizPlotter:
             if self.dynamic:
                 self.sleep()     
             else:
-                if not self.useGUI:
-                    raw_input("Press any key to exit")
+                if not self.useGUI and not self.toFile:
+                    self.stall()
                 break
                 
         if not self.useGUI:
+            if self.toFile:
+                self.saveFigs()
             self.close()
         
+    def stall(self):
+        raw_input("[%s] Press any key to exit" % "DCViz".center(10))
+
+    def rawDataAPI(self, data):
+        if self.dynamic:
+            print "[%s] Dynamic mode not supported for direct push mode." % "DCViz".center(10)
+        
+        if self.filepath is None:
+            if toFile is True:
+                print "[%s] A filename needs to be supplied in order to save figures to file." % "DCViz".center(10)
+        else:
+            self.filepath = self.filepath.strip(".png")
+        data = dataGenerator(data)
+        
+        self.manageFigures()
+        self.plot(data)
+        self.showFigures()
+        
+        if self.toFile:
+            self.saveFigs()
+        else:
+            self.stall()
             
+        self.close()
             
+        
     def load_sample(self):
         
         self.reload()
@@ -328,8 +411,26 @@ class DCVizPlotter:
             for i in range(self.skipRows):
                 self.skippedRows.append(self.file.readline().strip())
               
+    def saveFigs(self):
+            
+        path, fname = os.path.split(self.filepath)
         
+        dirname = "DCViz_out"
+        dirpath = pjoin(path, dirname)
         
+        if not os.path.exists(dirpath):
+            os.mkdir(dirpath)
+        
+        i = 0
+        for fig in zip(*self.figures)[0]:
+            
+            figname = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".png"
+            figpath = pjoin(dirpath, figname)
+            fig.savefig(figpath)
+
+            i += 1
+        
+        print "[%s] Figure(s) successfully saved." % "DCViz".center(10)
         
             
     def add_figure(self, fig):

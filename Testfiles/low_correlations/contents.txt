@@ -1,0 +1,1 @@
+DMC convergence for 56 particle two-dimensional quantum dot with frequency 0.5

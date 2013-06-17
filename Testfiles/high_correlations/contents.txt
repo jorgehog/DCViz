@@ -1,0 +1,1 @@
+DMC convergence for a 12 particle two-dimensional quantum dot with frequency 0.001

@@ -1,0 +1,4 @@
+ASGD: Minimization of a two-particle quantum dot with unit frequency
+DMC: Convergence for a 12 particle quantum dot with unit frequency
+Blocking: Error convergence for a 6 particle quantum dot with frequency 0.1
+Distribution: DMC distribution for a 6 particle quantum dot with frequency 0.01 with a particle frozen on the x-axis
