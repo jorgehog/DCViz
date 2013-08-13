@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, signal, os
+import re, numpy, time, signal, os, sys
 import matplotlib.pylab as plab
 from os.path import join as pjoin
 
@@ -103,7 +103,7 @@ class DCVizPlotter:
         
         if self.Ncols is None and self.fileBin:
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
-            
+            self.Exit()
     
     
     def signal_handler(self, signal, frame):
@@ -122,6 +122,11 @@ class DCVizPlotter:
         if setUpFamily:
 
             familyHome, _ = os.path.split(self.filepath)
+            
+            if not familyHome:
+                self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
+                self.Exit()
+                
             familyNames = [name for name in os.listdir(familyHome)\
                             if re.findall(self.nametag, name) and "tmp" not in name]
            
@@ -161,6 +166,7 @@ class DCVizPlotter:
             if time.time() - t0 > 10.0:
                self.Error("TIMEOUT: File was empty for too long...")
                self.file.close()
+               self.Exit()
                return
                
         self.file.close()
@@ -196,6 +202,7 @@ class DCVizPlotter:
         
         if self.stack not in ["H", "V"]:
             self.Error("Invalid stack argument %s. (Choose either H or V)" % self.stack)
+            self.Exit()
         
         s = ""
         i = 0
@@ -233,6 +240,7 @@ class DCVizPlotter:
                 i+=1
                 if i > 500:
                     self.Error("TIMEOUT: Figures wasn't set...")
+                    self.Exit()
                     return          
 
 
@@ -332,7 +340,7 @@ class DCVizPlotter:
             print "[%s] Dynamic mode not supported for direct push mode." % "DCViz".center(10)
         
         if self.filepath is None:
-            if toFile is True:
+            if self.toFile is True:
                 print "[%s] A filename needs to be supplied in order to save figures to file." % "DCViz".center(10)
         else:
             self.filepath = self.filepath.strip(".png")
@@ -464,7 +472,15 @@ class DCVizPlotter:
         if self.file is not None:
             if not self.file.closed:
                 self.file.close()
+    
+    def Exit(self):
         
+        if self.useGUI:
+            self.parent.closeEvent(None)
+        else:
+            sys.exit()
+        
+    
     def plot(self, data):
         "I am virtual"
     

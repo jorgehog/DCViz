@@ -12,18 +12,25 @@ except:
     print "\n" 
     sys.exit(1)
 
-from matplotlib import rc, pylab, colors, ticker, cm
-from mpl_toolkits.mplot3d import Axes3D
 
-#~ Paths include
-classes_thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.append(classes_thisDir)
+#==============================================================================
+# Setting font-style to latex if possible
+#==============================================================================
 
-from DCViz_sup import DCVizPlotter, dataGenerator
+from matplotlib import rc
 
 try:
     rc('text', usetex=True)
     rc('font', family='serif')
+    
+    try:
+        from matplotlib import pylab
+    except:
+        print "\nYou need matplotlib to use DCViz."
+        print "sudo apt-get install python-matplotlib"
+        print "\n"
+        sys.exit(1)
+    
     pylab.title("$\LaTeX$")
     pylab.draw()
     pylab.clf()
@@ -32,6 +39,27 @@ except:
     print "Neccessary latex packages not installed. Disabling latex support."
     rc('text', usetex=False)   
 
+
+#==============================================================================
+# Additional MPL imports goes here
+#==============================================================================
+
+from matplotlib import pylab, colors, ticker, cm
+from mpl_toolkits.mplot3d import Axes3D
+
+
+#==============================================================================
+# Including DCViz superclass and additional tools
+#==============================================================================
+classes_thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.append(classes_thisDir)
+
+from DCViz_sup import DCVizPlotter, dataGenerator
+
+
+#==============================================================================
+# User-defined classes:
+#==============================================================================
 
 
 class myTestClass(DCVizPlotter):
@@ -590,6 +618,8 @@ class Scaling(DCVizPlotter):
         self.fig4.legend(loc=2)
         self.fig4.set_ylabel("t[s]")
         self.fig4.set_xlabel("N")
+        
+        
 class E_vs_w(DCVizPlotter):
     
     stack = "H"    
@@ -779,37 +809,14 @@ class MIN_OUT(DCVizPlotter):
         grad_plot.axes.get_xaxis().get_label().set_fontsize(30)
             
             
-        
-def testbedJorgen(dynamic):
+
+#==============================================================================
+# Testbed (not implemented)
+#==============================================================================
+
+def testbed(dynamic):
+    pass
     
-    from pyLibQMC import paths
-    path = os.path.join(paths.scratchPath, "QMC_SCRATCH")
-
-    setting = "MIN"
-
-    if setting == "MIN" or setting == "ALL":
-        filepath = os.path.join(path, "ASGD_out.dat")
-        plot_tool = MIN_OUT(filepath, dynamic)
-    
-        if setting == "ALL":
-            print "MIN OUTPUT STARTING"
-            plot_tool.mainloop()
-
-    if setting == "DMC" or setting == "ALL":
-        dt = 0.001
-        filepath = os.path.join(path, "DMC_out.dat")
-        plot_tool = DMC_OUT(filepath, dynamic)
-        plot_tool.dt = dt
-    
-        if setting == "ALL":
-            print "DMC OUTPUT STARTING"
-            plot_tool.mainloop()
-
-    if setting != "ALL":
-        plot_tool.mainloop()
         
 if __name__ == "__main__":
-    print "Dynamic = FALSE"
-    testbedJorgen(False)
-    print "Dynamic = TRUE"
-    testbedJorgen(True)
+    testbed(False)
