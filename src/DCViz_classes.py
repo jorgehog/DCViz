@@ -129,18 +129,16 @@ class MD_OUT(DCVizPlotter):
     
     
     def plot(self, data):
+      
+        lx, ly = [float(x) for x in self.skippedRows[0].split()]
         
-        try:
-            lx, ly = [float(x) for x in self.skippedRows[0].split()]
-            
-            X, Y = data
+        X, Y = data
     
-            self.subfigure.plot(X, Y, 'bo')
-            
-            self.subfigure.axes.set_xlim([0, lx])
-            self.subfigure.axes.set_ylim([0, ly])
-        except:
-            return
+        self.subfigure.plot(X, Y, 'bo')
+        
+        self.subfigure.axes.set_xlim([0, lx])
+        self.subfigure.axes.set_ylim([0, ly])
+  
     
     
 

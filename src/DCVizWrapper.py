@@ -72,10 +72,13 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
         
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
-def main(path, dynamic, toFile=False, silent=False):
+def main(path, dynamic, delay = None, toFile=False, silent=False):
     
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
+    if delay is not None and type(delay) in [int, float]:
+        instance.delay = delay
+    
     instance.mainloop()
 
 def mainToFile(path):
@@ -117,11 +120,12 @@ class DCVizThread(threading.Thread):
         
         self.app = getInstance(filepath, dynamic, toFile, threaded=True)
         
-        if delay:
+
+        if delay is not None:
             
             if type(delay) not in [float, int]:
                 terminalTracker("DCViz", "Delay must be given as a numeric value")                
-                
+
             self.app.delay = delay
         
         super(DCVizThread, self).__init__()
@@ -139,23 +143,42 @@ class DCVizThread(threading.Thread):
 
 if __name__ == "__main__":
     dynamic = False
-    toFile = False    
+    toFile = False   
+    delay = None
     
     try:
         if "-d" in sys.argv:
             dynamic = True
+        
+            idx = sys.argv.index("-d")
+            
+            if not idx + 1 == len(sys.argv):
+                obj = eval(sys.argv[idx + 1])
+                if type(obj) in [int, float]:
+                    delay = obj
+                    sys.argv.pop(idx+1)                    
+                                
+                    
             sys.argv.remove("-d")
+            
         elif "-f" in sys.argv:
             toFile = True
             sys.argv.remove("-f")
             
         path = sys.argv[1]
+        sys.argv.pop(1)
             
     except:
         print "Please supply a path as cmdline arg"
         sys.exit(1)
-            
+
+    if len(sys.argv) != 1:
+        print "Unrecognized command line arguments:"
+        for arg in sys.argv[1:]:
+            print arg
+        sys.exit(1)
+  
     if toFile:
         mainToFile(path)
     else:
-        main(path, dynamic)
+        main(path, dynamic, delay=delay)

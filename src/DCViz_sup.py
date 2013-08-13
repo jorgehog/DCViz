@@ -13,7 +13,7 @@ class dataGenerator:
             self.n, self.m = data.shape
             self.getD = self.get2Ddata
         else:
-            self.m = data.shape
+            self.m, = data.shape
             self.n = 1
             self.getD = self.get1Ddata
         
@@ -35,6 +35,7 @@ class dataGenerator:
         return self.data[:, i]
 
     def __iter__(self):
+
         for i in range(self.m):
             yield self.getD(i)
 
@@ -343,7 +344,7 @@ class DCVizPlotter:
             self.clear()
            
             data = self.get_data(setUpFamily = self.isFamilyMember)
-  
+
             self.plot(data)  
             self.showFigures()
             self.plotted = True
@@ -400,8 +401,8 @@ class DCVizPlotter:
         if self.fileBin:
             return "green"
             
-        skipRows, self.Ncols = self.sniffer(sample)
-
+        skipRows, self.Ncols = self.sniffer(sample) 
+        
         self.file.seek(0)
         
         self.skippedRows = []
@@ -417,10 +418,10 @@ class DCVizPlotter:
     def sniffer(self, sample):
         
         sampleList = [row.split() for row in sample.split("\n")]
-
+ 
         #If user has specified the number of rows to skip
         if self.skipRows is not None:
-            return self.skipRows, len(sampleList[self.skipRows])
+            return self.skipRows, len(sampleList[0])
 
         nLast = len(sampleList[-1])
         i = len(sampleList) - 1
