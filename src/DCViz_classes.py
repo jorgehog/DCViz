@@ -37,6 +37,9 @@ try:
     
 except:
     print "Neccessary latex packages not installed. Disabling latex support."
+    print "Got Latex? Make sure you have the DVIPS package from"
+    print "\nsudo apt-get install dvips-fontdata-n2bk\n\n"
+
     rc('text', usetex=False)   
 
 
@@ -114,6 +117,32 @@ class myTestClassFamily(DCVizPlotter):
             subfig.plot(fileData.data)
             subfig.set_ylim([-1,1])
         
+
+
+class MD_OUT(DCVizPlotter):
+    
+    nametag = "MD_out\d*\.dat"
+
+    skipRows = 1
+    isFamilyMember = True
+    loadLatest = True
+    
+    
+    def plot(self, data):
+        
+        try:
+            lx, ly = [float(x) for x in self.skippedRows[0].split()]
+            
+            X, Y = data
+    
+            self.subfigure.plot(X, Y, 'bo')
+            
+            self.subfigure.axes.set_xlim([0, lx])
+            self.subfigure.axes.set_ylim([0, ly])
+        except:
+            return
+    
+    
 
 class EnergyTrail(DCVizPlotter):
     

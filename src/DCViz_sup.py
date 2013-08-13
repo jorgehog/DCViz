@@ -69,6 +69,7 @@ class DCVizPlotter:
     isFamilyMember = False
     familyName = "unnamed"
     familyFileNames = []
+    loadLatest = False
 
     skippedRows = []
     skipCols = 0
@@ -84,7 +85,7 @@ class DCVizPlotter:
     
     canStart = False
     
-    def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False):
+    def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
         self.dynamic = dynamic
         self.useGUI = useGUI
         
@@ -99,7 +100,9 @@ class DCVizPlotter:
         
         self.toFile = toFile
         
-        signal.signal(signal.SIGINT, self.signal_handler)
+        if not (threaded or useGUI) and dynamic:
+            print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
+            signal.signal(signal.SIGINT, self.signal_handler)
         
         if self.Ncols is None and self.fileBin:
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
@@ -133,20 +136,41 @@ class DCVizPlotter:
             familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])
             N = len(familyMembers)
             
-            self.familySkippedRows = [0]*N
-            data = [0]*N
-            self.familyFileNames = [0]*len(data)     
-            
-            for i in range(N):
-             
+            if not self.loadLatest:
+                self.familySkippedRows = [0]*N
+                data = [0]*N
+                self.familyFileNames = [0]*len(data)     
+                
+                for i in range(N):
+                 
+                    self.file = None
+                    self.filepath = familyMembers[i]
+                
+                    self.familyFileNames[i] = os.path.basename(familyMembers[i])
+                    
+                    data[i] = self.get_data(setUpFamily=False)
+                    self.familySkippedRows.append(self.skippedRows)
+                
+            else:
+                
+                _file = familyMembers[0]
+                oldest = os.path.getctime(_file)
+                
+                for member in familyMembers:
+                    
+                    age = os.path.getctime(member) 
+                    if  age > oldest:
+                        oldest = age
+                        _file = member
+                        
+                        
+                self.filepath = _file
                 self.file = None
-                self.filepath = familyMembers[i]
-            
-                self.familyFileNames[i] = os.path.basename(familyMembers[i])
                 
-                data[i] = self.get_data(setUpFamily=False)
-                self.familySkippedRows.append(self.skippedRows)
-                
+                return self.get_data(setUpFamily=False)
+    
+
+                    
             self.file.close()
             return data
             
@@ -207,6 +231,10 @@ class DCVizPlotter:
         s = ""
         i = 0
         self.figures = []
+        
+        if not self.figMap:
+            self.figMap = {"figure": ["subfigure"]}
+        
         for fig in self.figMap.keys():
             s += "self.%s = plab.figure(); " % fig
             s += "self.i%s = self.add_figure(self.%s); " % (fig, fig)
@@ -311,6 +339,7 @@ class DCVizPlotter:
         self.manageFigures()
 
         while (self.shouldReplot()):
+ 
             self.clear()
            
             data = self.get_data(setUpFamily = self.isFamilyMember)

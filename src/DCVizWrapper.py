@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import os, sys, inspect, re
+import os, sys, inspect, re, threading
 from os.path import join as pjoin
 
 #Adding the srcDir to the local pythonpath in order to avoid global pythonpath sets
@@ -58,10 +58,10 @@ def matchMode(modes, path, noWarnings=False, silent=False):
     if not silent: terminalTracker("DCViz", "Matched [%s] with [%s]" % (name, "".join(str(matchedMode).split(".")[1:])))
     return matchedMode
 
-def main(path, dynamic, toFile=False, silent=False):
+def getInstance(path, dynamic=False, toFile=False, threaded=False):
     
     if not os.path.exists(path):
-        terminalTracker("Warning", "No such file...")
+        terminalTracker("Warning", "No such file: " + path)
         return
         
     modes = autodetectModes()
@@ -70,10 +70,12 @@ def main(path, dynamic, toFile=False, silent=False):
     if not matchedMode:
         return;
         
-    if dynamic:
-        terminalTracker("DCViz", "Interrupt dynamic mode with CTRL+C")
-        
-    instance = matchedMode(path, dynamic=dynamic, toFile=toFile)
+    return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
+
+def main(path, dynamic, toFile=False, silent=False):
+    
+    instance = getInstance(path, dynamic=dynamic, toFile=toFile)
+
     instance.mainloop()
 
 def mainToFile(path):
@@ -108,6 +110,32 @@ def mainToFile(path):
             plotTool = matchedMode(pjoin(root, outfile), toFile=True)
             plotTool.mainloop()
             
+
+class DCVizThread(threading.Thread):
+    
+    def __init__(self, filepath, dynamic = False, toFile = False, delay = None):
+        
+        self.app = getInstance(filepath, dynamic, toFile, threaded=True)
+        
+        if delay:
+            
+            if type(delay) not in [float, int]:
+                terminalTracker("DCViz", "Delay must be given as a numeric value")                
+                
+            self.app.delay = delay
+        
+        super(DCVizThread, self).__init__()
+    
+    
+    def run(self):
+        self.app.mainloop()
+        
+    def stop(self):
+        
+        if not self.app.stopped:
+            self.app.stopped = True
+            terminalTracker("DCViz", "Stopped thread.")
+
 
 if __name__ == "__main__":
     dynamic = False
