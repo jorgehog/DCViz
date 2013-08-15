@@ -71,6 +71,8 @@ class DCVizPlotter:
     familyName = "unnamed"
     familyFileNames = []
     loadLatest = False
+    loadSequential = False
+    getNumberForSort = None
 
     skippedRows = []
     skipCols = 0
@@ -101,6 +103,9 @@ class DCVizPlotter:
         
         self.toFile = toFile
         
+        if self.loadSequential:
+            self.nextInLine = 0
+        
         if not (threaded or useGUI) and dynamic:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
@@ -120,7 +125,6 @@ class DCVizPlotter:
             return self.familyName + " (family)"
         return ".".join(os.path.split(self.filepath)[-1].split(".")[0:-1])
 
-        
     def get_data(self, setUpFamily):
 
         if setUpFamily:
@@ -137,22 +141,8 @@ class DCVizPlotter:
             familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])
             N = len(familyMembers)
             
-            if not self.loadLatest:
-                self.familySkippedRows = [0]*N
-                data = [0]*N
-                self.familyFileNames = [0]*len(data)     
-                
-                for i in range(N):
-                 
-                    self.file = None
-                    self.filepath = familyMembers[i]
-                
-                    self.familyFileNames[i] = os.path.basename(familyMembers[i])
-                    
-                    data[i] = self.get_data(setUpFamily=False)
-                    self.familySkippedRows.append(self.skippedRows)
-                
-            else:
+
+            if self.loadLatest:
                 
                 _file = familyMembers[0]
                 oldest = os.path.getctime(_file)
@@ -168,7 +158,39 @@ class DCVizPlotter:
                 self.filepath = _file
                 self.file = None
                 
-                return self.get_data(setUpFamily=False)
+                return self.get_data(setUpFamily=False)                
+                
+                
+            elif self.loadSequential:
+                
+                if self.getNumberForSort:
+                    familyMembers = sorted(familyMembers, key=self.getNumberForSort)
+
+
+                self.filepath = familyMembers[self.nextInLine]
+                                    
+                self.nextInLine = (self.nextInLine + 1)%N
+                
+                self.file = None
+                
+                return self.get_data(setUpFamily=False)                
+                
+                
+            else:
+                
+                self.familySkippedRows = [0]*N
+                data = [0]*N
+                self.familyFileNames = [0]*len(data)     
+                
+                for i in range(N):
+                 
+                    self.file = None
+                    self.filepath = familyMembers[i]
+                
+                    self.familyFileNames[i] = os.path.basename(familyMembers[i])
+                    
+                    data[i] = self.get_data(setUpFamily=False)
+                    self.familySkippedRows.append(self.skippedRows)
     
 
                     

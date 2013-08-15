@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys, re, os, inspect
+from re import findall as find
 
 try:
     import numpy
@@ -118,6 +119,11 @@ class myTestClassFamily(DCVizPlotter):
             subfig.set_ylim([-1,1])
         
 
+getNum = lambda a : int(find("MD\_out(\d+)\.dat", a)[0])
+
+def getNum(a):
+    print "nam3", a
+    
 
 class MD_OUT(DCVizPlotter):
     
@@ -125,21 +131,38 @@ class MD_OUT(DCVizPlotter):
 
     skipRows = 1
     isFamilyMember = True
-    loadLatest = True
     
+#    loadLatest = True    
+    loadSequential = True
+        
+    
+    getNumberForSort = lambda _s, a : int(find("MD\_out(\d+)\.dat", a)[0])  
+    
+    colorTable = ['b', 'r', 'g', 'k', '0.5']
+    
+    figMap = {"fig": ["subfigure", "veldist"]}
+    
+    stack = "H"
     
     def plot(self, data):
       
         lx, ly = [float(x) for x in self.skippedRows[0].split()]
         
-        X, Y = data
-    
-        self.subfigure.plot(X, Y, 'bo')
+        C, X, Y, Vx, Vy = data
+        
+        for c, x, y in zip(C, X, Y):
+            self.subfigure.plot(x, y, self.colorTable[int(c)] + "o")
+        
+        V = numpy.sqrt(Vx**2 + Vy**2)
+        
+        self.veldist.hist(V[numpy.where(V > 0)])
+        
         
         self.subfigure.axes.set_xlim([0, lx])
         self.subfigure.axes.set_ylim([0, ly])
+        self.subfigure.set_title(os.path.split(self.filepath)[-1].split(".")[0].split("_")[1].replace("out", ""))
   
-    
+        
     
 
 class EnergyTrail(DCVizPlotter):

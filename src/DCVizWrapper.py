@@ -76,6 +76,9 @@ def main(path, dynamic, delay = None, toFile=False, silent=False):
     
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
+    if not instance:
+        return 
+        
     if delay is not None and type(delay) in [int, float]:
         instance.delay = delay
     
