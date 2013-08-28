@@ -119,17 +119,37 @@ class myTestClassFamily(DCVizPlotter):
             subfig.set_ylim([-1,1])
         
 
-getNum = lambda a : int(find("MD\_out(\d+)\.dat", a)[0])
 
-def getNum(a):
-    print "nam3", a
+class mdOutCpp(DCVizPlotter):
+    
+    nametag = "mdPos\d+?\.arma"
+    
+    armaBin = True
+    isFamilyMember = True
+#    loadSequential = True
+    loadLatest = True
+    
+    getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
+    
+    def plot(self, data):
+
+        
+        d = data.data.reshape((data.data.size,))
+        x = d[::2]
+        y = d[1::2]
+        self.subfigure.plot(x, y, 'b.')
+        
+        
+        self.subfigure.set_title(str(self.getNumberForSort(self.filepath)))
+        self.subfigure.axes.set_xlim([0, numpy.sqrt(len(x))])
+        self.subfigure.axes.set_ylim([0, numpy.sqrt(len(y))])
     
 
 class MD_OUT(DCVizPlotter):
     
     nametag = "MD_out\d*\.dat"
 
-    skipRows = 1
+    skipRows = 2
     isFamilyMember = True
     
 #    loadLatest = True    
@@ -146,7 +166,10 @@ class MD_OUT(DCVizPlotter):
     
     def plot(self, data):
       
-        lx, ly = [float(x) for x in self.skippedRows[0].split()]
+        lx, ly, T = [float(x) for x in self.skippedRows[0].split()]
+        Tz = self.skippedRows[1]
+        
+        
         
         C, X, Y, Vx, Vy = data
         
@@ -155,13 +178,19 @@ class MD_OUT(DCVizPlotter):
         
         V = numpy.sqrt(Vx**2 + Vy**2)
         
-        self.veldist.hist(V[numpy.where(V > 0)])
+        try:
+            self.veldist.hist(V[numpy.where(V > 0)], bins=20, facecolor="green")
+        except:
+            pass
         
         
         self.subfigure.axes.set_xlim([0, lx])
         self.subfigure.axes.set_ylim([0, ly])
+        self.subfigure.set_xlabel("x")
+        self.subfigure.set_ylabel("y")
+        self.veldist.set_xlabel("hist(v)")
         self.subfigure.set_title(os.path.split(self.filepath)[-1].split(".")[0].split("_")[1].replace("out", ""))
-  
+        self.veldist.set_title("T = %g / %.2f %.2f %.2f" %  ((T,) + tuple(eval(Tz))))
         
     
 
