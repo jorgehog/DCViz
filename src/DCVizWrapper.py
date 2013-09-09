@@ -73,7 +73,9 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
 def main(path, dynamic, delay = None, toFile=False, silent=False):
-    
+    print "DCVIZ INIT"
+    if path == "hei":
+        path = "/home/jorgehog/tmp/mdPos0.arma"
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
     if not instance:

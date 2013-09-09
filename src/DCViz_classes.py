@@ -126,8 +126,8 @@ class mdOutCpp(DCVizPlotter):
     
     armaBin = True
     isFamilyMember = True
-#    loadSequential = True
-    loadLatest = True
+    loadSequential = True
+#    loadLatest = True
     
     getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
     
