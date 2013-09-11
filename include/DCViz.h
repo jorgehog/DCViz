@@ -18,7 +18,7 @@ public:
         DCVizThread.detach();
     }
 
-    inline void launchGUI(); //Not implemented
+    inline void launchGUI();
     inline void launch(const bool dynamic=false, const double delay=3);
     inline void finalize();
 
@@ -86,20 +86,3 @@ inline void DCViz::launchPython(string cmd) {
     Py_Finalize();
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

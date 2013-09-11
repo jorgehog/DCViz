@@ -524,7 +524,7 @@ class DCVizGUI(QMainWindow):
         self.img['stop'] = QIcon(os.path.join(thisDir, 'Images', 'stop.gif'))
 
 def main(masterDir = None):
-    print "MAIN MASTERDIR, ", masterDir
+  
     if masterDir is None:
         masterDir = os.getcwd()
     
