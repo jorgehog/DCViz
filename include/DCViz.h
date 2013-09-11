@@ -1,6 +1,5 @@
-#include <stdlib.h>
-#include <thread>
 #include <Python.h>
+#include <thread>
 #include <sstream>
 
 using namespace std;
@@ -9,13 +8,19 @@ class DCViz {
 public:
 
     DCViz(string fileOrDir) : launched(false), fileOrDir(fileOrDir) {}
+
     inline ~DCViz() {
+
+        if (DCVizThread.joinable()){
+            DCVizThread.join();
+        }
+
         DCVizThread.detach();
     }
 
-    inline void launchGUI() {assert(false);} //Not implemented
-    inline void launch(const bool dynamic=false, const int delay=3);
-    inline void join();
+    inline void launchGUI(); //Not implemented
+    inline void launch(const bool dynamic=false, const double delay=3);
+    inline void finalize();
 
 
 private:
@@ -25,43 +30,76 @@ private:
 
     thread DCVizThread;
 
-    inline void launchThread(const string cmd);
-    inline static void pyLaunch(const string cmd);
+    inline void launchThread(string cmd);
+
+    inline static void launchPython(string cmd);
+
 };
 
+inline void DCViz::launchGUI() {
 
-inline void DCViz::launch(const bool dynamic, const int delay) {
+    assert(!launched);
+
+    launchThread("import DCVizGUI; DCVizGUI.main('" + (fileOrDir + "')"));
+
+}
+
+
+inline void DCViz::launch(const bool dynamic, const double delay) {
 
     assert(delay >= 0);
     assert(!launched);
 
-    stringstream s;
+    stringstream cmd;
 
-    s << "import DCVizWrapper; DCVizWrapper.main('" <<fileOrDir << "', ";
+    cmd << "import DCVizWrapper; DCVizWrapper.main('" <<fileOrDir << "', ";
 
     if (dynamic) {
-        s << "True, ";
+        cmd << "True, ";
     } else {
-        s << "False, ";
+        cmd << "False, ";
     }
 
-    s << delay << ")";
+    cmd << delay << ")";
 
-    launchThread(s.str());
+    launchThread(cmd.str());
+
 }
 
-
-inline void DCViz::launchThread(const string cmd) {
-    DCVizThread = thread(DCViz::pyLaunch, cmd);
+//This function is standalone because it's called by both the
+//GUI and the non-GUI methods.
+inline void DCViz::launchThread(string cmd) {
+    DCVizThread = thread(DCViz::launchPython, cmd);
     launched = true;
 }
 
-inline void DCViz::join() {
+inline void DCViz::finalize() {
     DCVizThread.join();
 }
 
-inline void DCViz::pyLaunch(const string cmd) {
+inline void DCViz::launchPython(string cmd) {
+
     Py_Initialize();
+
     PyRun_SimpleString(cmd.c_str());
+
     Py_Finalize();
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

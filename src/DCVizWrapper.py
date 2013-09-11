@@ -52,7 +52,7 @@ def matchMode(modes, path, noWarnings=False, silent=False):
     
     if matchedMode is None:
         if not noWarnings:
-            terminalTracker("Warning", "Found no matching nametags for specified filename")
+            terminalTracker("Warning", "Found no matching nametags for specified filename %s (%s)" % (name, path))
         return
     
     if not silent: terminalTracker("DCViz", "Matched [%s] with [%s]" % (name, "".join(str(matchedMode).split(".")[1:])))
@@ -73,9 +73,7 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
 def main(path, dynamic, delay = None, toFile=False, silent=False):
-    print "DCVIZ INIT"
-    if path == "hei":
-        path = "/home/jorgehog/tmp/mdPos0.arma"
+
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
     if not instance:
