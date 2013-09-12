@@ -19,7 +19,11 @@ public:
     }
 
     inline void launchGUI();
-    inline void launch(const bool dynamic=false, const double delay=3);
+    inline void launch(const bool dynamic=false,
+                       const double delay=3,
+//                       const bool silent=false,
+                       const int figSize_x = -1,
+                       const int figSize_y = -1);
     inline void finalize();
 
 
@@ -45,23 +49,39 @@ inline void DCViz::launchGUI() {
 }
 
 
-inline void DCViz::launch(const bool dynamic, const double delay) {
+inline void
+DCViz::launch(const bool dynamic,
+                          const double delay,
+//                          const bool silent,
+                          const int figSize_x,
+                          const int figSize_y) {
 
     assert(delay >= 0);
     assert(!launched);
 
     stringstream cmd;
 
-    cmd << "import DCVizWrapper; DCVizWrapper.main('" <<fileOrDir << "', ";
+    cmd << "import DCVizWrapper; DCVizWrapper.main('" <<fileOrDir << "'";
 
     if (dynamic) {
-        cmd << "True, ";
+        cmd << ", True";
     } else {
-        cmd << "False, ";
+        cmd << ", False";
     }
 
-    cmd << delay << ")";
+    cmd << ", delay=" <<delay;
 
+//    if (silent) {
+//        cmd << ", silent=True";
+//    }
+
+
+    if ((figSize_x != -1) && (figSize_y != -1)) {
+        cmd << ", fs=[" << figSize_x << "," << figSize_y << "]";
+    }
+
+
+    cmd << ")";
     launchThread(cmd.str());
 
 }

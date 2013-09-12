@@ -72,7 +72,10 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
         
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
-def main(path, dynamic, delay = None, toFile=False, silent=False):
+def main(path, dynamic, delay = None, toFile=False, fs=None, silent=False):
+
+    if fs:
+        pylab.rcParams['figure.figsize'] = fs
 
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
@@ -163,16 +166,30 @@ if __name__ == "__main__":
                                 
                     
             sys.argv.remove("-d")
-            
+    
         elif "-f" in sys.argv:
             toFile = True
             sys.argv.remove("-f")
+
+        figSize = None            
+        if "-s" in sys.argv:
+            idx = sys.argv.index("-s")
+            
+            if not idx + 1 == len(sys.argv) and not idx + 2 == len(sys.argv):
+                figSize = [eval(sys.argv[idx + 1]), eval(sys.argv[idx + 2])]
+                for obj in figSize:
+                    if type(obj) in [int, float] and figSize is not None:
+                        sys.argv.pop(idx+ 1)      
+                    else:
+                        figSize = None
+            
+            sys.argv.remove("-s")
             
         path = sys.argv[1]
         sys.argv.pop(1)
             
     except:
-        print "Please supply a path as cmdline arg"
+        print "Error parsing command line (path not given?)"
         sys.exit(1)
 
     if len(sys.argv) != 1:
@@ -184,4 +201,4 @@ if __name__ == "__main__":
     if toFile:
         mainToFile(path)
     else:
-        main(path, dynamic, delay=delay)
+        main(path, dynamic, delay=delay, fs=figSize)
