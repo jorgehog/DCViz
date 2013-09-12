@@ -126,11 +126,23 @@ class mdOutCpp(DCVizPlotter):
     
     armaBin = True
     isFamilyMember = True
-#    loadSequential = True
-    loadLatest = True
+    loadSequential = True
+#    loadLatest = True
     ziggyMagicNumber = 10
     
     getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
+    
+    _cfg = open("/home/jorgehog/QtProjects/MD/configMD.cfg", "r").read()    
+    _def = open("/home/jorgehog/QtProjects/MD/src/defines.h", "r").read()
+    
+    def fetchSize(self):
+
+        NX = re.findall("#define ENS_NX (\d+)", self._def)[0]
+        NY = re.findall("#define ENS_NY (\d+)", self._def)[0]
+   
+        padScale = re.findall("solver\:.*?tightness\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
+        
+        return int(NX), int(NY), float(padScale)
     
     def plot(self, data):
 
@@ -142,22 +154,23 @@ class mdOutCpp(DCVizPlotter):
         _colors = ["0.25", '0.75']
         _sizes = [20, 40]        
         
-        N = len(x)
-        n = numpy.sqrt(N)
-        L = n*1.1
-        L = n*1.1
+        NX, NY, padScale = self.fetchSize();
+        
+        N = NX*NY
+        Lx = NX*padScale
+        Ly = NY*padScale
         
         _c = [_colors[i%2] for i in range(N)]
         _s = [_sizes[i%2] for i in range(N)]        
         
         self.subfigure.scatter(x, y, color=_c, s=_s, edgecolor='black')
-        self.subfigure.axes.fill_between([0, L], [L, L], [0.75*L, 0.75*L], facecolor='red', alpha=0.1)
-        self.subfigure.axes.fill_between([0, L], [0.25*L, 0.25*L], facecolor='red', alpha=0.1)
-        self.subfigure.axes.fill_between([0, L], [0.4*L, 0.4*L], [0.6*L, 0.6*L], facecolor='blue', alpha=0.1)
+        self.subfigure.axes.fill_between([0, Lx], [Ly, Ly], [0.75*Ly, 0.75*Ly], facecolor='red', alpha=0.1)
+        self.subfigure.axes.fill_between([0, Lx], [0.25*Ly, 0.25*Ly], facecolor='red', alpha=0.1)
+        self.subfigure.axes.fill_between([0, Lx], [0.4*Ly, 0.4*Ly], [0.6*Ly, 0.6*Ly], facecolor='blue', alpha=0.1)
         
         self.subfigure.set_title(str(self.getNumberForSort(self.filepath)))
-        self.subfigure.axes.set_xlim([0, L])
-        self.subfigure.axes.set_ylim([0, L])
+        self.subfigure.axes.set_xlim([0, Lx])
+        self.subfigure.axes.set_ylim([0, Ly])
     
 
 class MD_OUT(DCVizPlotter):

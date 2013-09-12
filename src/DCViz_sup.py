@@ -89,6 +89,8 @@ class DCVizPlotter:
     
     canStart = False
     
+    anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'    
+    
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
         self.dynamic = dynamic
         self.useGUI = useGUI
@@ -435,7 +437,7 @@ class DCVizPlotter:
         for i in range(skipRows):
             self.skippedRows.append(self.file.readline().strip())
        
-        anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'
+        anyNumber = self.anyNumber
         self.rx = re.compile(r'\s*.+?'*self.skipCols + (r'\s*(%s)\s+' % anyNumber)*(self.Ncols - self.skipCols-1) + r'(%s)\s*[\n$]' % anyNumber)    
         
         return "green"
