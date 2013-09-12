@@ -136,7 +136,7 @@ class DCVizPlotter:
                 self.Exit()
                 
             familyNames = [name for name in os.listdir(familyHome)\
-                            if re.findall(self.nametag, name) and "tmp" not in name]
+                            if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
            
             familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])
             N = len(familyMembers)
@@ -149,10 +149,13 @@ class DCVizPlotter:
                 
                 for member in familyMembers:
                     
-                    age = os.path.getctime(member) 
-                    if  age > oldest:
-                        oldest = age
-                        _file = member
+                    try:
+                        age = os.path.getctime(member) 
+                        if  age > oldest:
+                            oldest = age
+                            _file = member
+                    except:
+                        continue
                         
                         
                 self.filepath = _file
