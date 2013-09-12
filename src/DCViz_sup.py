@@ -73,6 +73,7 @@ class DCVizPlotter:
     loadLatest = False
     loadSequential = False
     getNumberForSort = None
+    ziggyMagicNumber = 1
 
     skippedRows = []
     skipCols = 0
@@ -172,7 +173,7 @@ class DCVizPlotter:
 
                 self.filepath = familyMembers[self.nextInLine]
                                     
-                self.nextInLine = (self.nextInLine + 1)%N
+                self.nextInLine = (self.nextInLine + self.ziggyMagicNumber)%N
                 
                 self.file = None
                 
