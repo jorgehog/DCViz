@@ -132,9 +132,12 @@ class mdOutCpp(DCVizPlotter):
     
     getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
     
-    _cfg = open("/home/jorgehog/QtProjects/MD/configMD.cfg", "r").read()    
-    _def = open("/home/jorgehog/QtProjects/MD/src/defines.h", "r").read()
-    
+    try:
+        _cfg = open("/home/jorgehog/QtProjects/MD/configMD.cfg", "r").read()    
+        _def = open("/home/jorgehog/QtProjects/MD/src/defines.h", "r").read()
+    except:
+        pass
+   
     def fetchSize(self):
 
         NX = re.findall("#define ENS_NX (\d+)", self._def)[0]

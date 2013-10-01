@@ -510,7 +510,10 @@ class DCVizPlotter:
         
     def show(self, drawOnly=False):
         for fig in self.figures:
-            fig[0].canvas.draw()
+            try:
+                fig[0].canvas.draw()
+            except:
+                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)")
             if not drawOnly:
                 fig[0].show()
         
