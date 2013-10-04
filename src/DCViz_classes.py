@@ -119,59 +119,109 @@ class myTestClassFamily(DCVizPlotter):
             subfig.set_ylim([-1,1])
         
 
+class standardBinaryArmaVec(DCVizPlotter):
+    
+    nametag = "binaryArmaVec\.arma$"
+
+    armaBin = True
+    
+    figMap = {'fig' : 'subfigure', 'fig2': 'sf'}
+    def plot(self, data):
+
+        N = len(data)        
+        r = numpy.linspace(0.1, 6, N)
+        self.subfigure.plot(r, numpy.cumsum(data.data)*(6-0.1)/(N-1), 'b-^');
+        self.sf.plot(r, -data.data, 'b-^')
+        self.sf.axes.set_xlabel("R")
+        self.subfigure.axes.set_xlabel("R")
+        self.sf.axes.set_ylabel("F")
+        self.subfigure.axes.set_ylabel("-cumsum(F)")
+        
+        
+
 
 class mdOutCpp(DCVizPlotter):
     
     nametag = "mdPos\d+?\.arma"
     
     armaBin = True
+    transpose = True    
+    
     isFamilyMember = True
-    loadSequential = True
-#    loadLatest = True
+#    loadSequential = True
+    loadLatest = True
     ziggyMagicNumber = 10
+    
+#    stack = "H"
     
     getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
     
     _cfg = open("/home/jorgehog/QtProjects/MD/configMD.cfg", "r").read()    
     _def = open("/home/jorgehog/QtProjects/MD/src/defines.h", "r").read()
     
+    c = [numpy.random.uniform(size=(3,)) for i in range(10)]
+    
+#    figMap = {"fig": ["subfigure", "eventFigure"]}
+    
     def fetchSize(self):
 
         NX = re.findall("#define ENS_NX (\d+)", self._def)[0]
         NY = re.findall("#define ENS_NY (\d+)", self._def)[0]
-   
-        padScale = re.findall("solver\:.*?tightness\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
         
-        return int(NX), int(NY), float(padScale)
+        W = re.findall("Events.*?Thermostats.*?widthFactor\s*=\s*(.+?)\;", self._cfg, re.DOTALL)[0]
+        padScale = re.findall("solver.*?tightness\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
+        
+        return int(NX), int(NY), float(padScale), float(W)
     
     def plot(self, data):
 
-        
-        d = data.data.reshape((data.data.size,))
-        x = d[::2]
-        y = d[1::2]
+        x, y = data
 
-        _colors = ["0.25", '0.75']
-        _sizes = [20, 40]        
+        _colors = ["r", '0.75']
+        _sizes = [50, 100]        
         
-        NX, NY, padScale = self.fetchSize();
+        NX, NY, padScale, W = self.fetchSize();
         
         N = NX*NY
         Lx = NX*padScale
         Ly = NY*padScale
         
         _c = [_colors[i%2] for i in range(N)]
-        _s = [_sizes[i%2] for i in range(N)]        
+        _s = [_sizes[i%2] for i in range(N)]   
+        
+        with open("/home/jorgehog/tmp/coolMiddle.arma", 'rb') as f:
+            _data = self.unpackArmaMatBin(f)
+            sliceCorner = [_data[0, 0], _data[0, 1]]
+            sliceSize1 = _data[1, 0]-_data[0, 0] 
+            sliceSize2 = _data[1, 1]-_data[0, 1]
+            self.subfigure.add_patch(pylab.Rectangle(sliceCorner, sliceSize1, sliceSize2, fill=False, color=numpy.random.rand(3,)))
         
         self.subfigure.scatter(x, y, color=_c, s=_s, edgecolor='black')
-        self.subfigure.axes.fill_between([0, Lx], [Ly, Ly], [0.75*Ly, 0.75*Ly], facecolor='red', alpha=0.1)
-        self.subfigure.axes.fill_between([0, Lx], [0.25*Ly, 0.25*Ly], facecolor='red', alpha=0.1)
-        self.subfigure.axes.fill_between([0, Lx], [0.4*Ly, 0.4*Ly], [0.6*Ly, 0.6*Ly], facecolor='blue', alpha=0.1)
+#        self.subfigure.axes.fill_between([0, Lx], [Ly, Ly], [(1-W)*Ly, (1-W)*Ly], facecolor='red', alpha=0.1)
+#        self.subfigure.axes.fill_between([0, Lx], [W*Ly, W*Ly], facecolor='red', alpha=0.1)
+#        self.subfigure.axes.fill_between([0, Lx], [(1-W)*Ly/2, (1-W)*Ly/2], [(1+W)*Ly/2, (1+W)*Ly/2], facecolor='blue', alpha=0.1)
         
-        self.subfigure.set_title(str(self.getNumberForSort(self.filepath)))
+        __N = self.getNumberForSort(self.filepath)
+        self.subfigure.set_title(str(__N))
         self.subfigure.axes.set_xlim([0, Lx])
         self.subfigure.axes.set_ylim([0, Ly])
-    
+        
+        
+#        try:
+#            _data = self.unpackArmaMatBin(open("/home/jorgehog/tmp/mdEventsOut.arma", "rb")).transpose()
+#        except:
+#            print "failed to load"
+#            return
+#        _N = re.findall("solver.*?N\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
+#        T0 = re.findall("mainThermostat.*?bathTemperature\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
+#        m =  re.findall("Events.*?Thermostats.*?temperatureScaleFactorWarm\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
+#        
+#        T0, _N, m = float(T0), int(_N), float(m)
+#        for l, col in enumerate(dataGenerator(_data)):
+#            _x = numpy.where(col != 0)
+#            self.eventFigure.plot(numpy.arange(__N), col[:__N]/T0, c=self.c[l])
+#        self.eventFigure.axes.set_xlim([0, _N-1])
+#        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
 class MD_OUT(DCVizPlotter):
     

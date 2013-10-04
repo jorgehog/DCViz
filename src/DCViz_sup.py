@@ -66,6 +66,7 @@ class DCVizPlotter:
     armaBin = False
     fileBin = False
     Ncols = None
+    transpose = False    
     
     isFamilyMember = False
     familyName = "unnamed"
@@ -158,7 +159,7 @@ class DCVizPlotter:
                             oldest = age
                             _file = member
                     except:
-                        continue
+                        pass
                         
                         
                 self.filepath = _file
@@ -215,6 +216,7 @@ class DCVizPlotter:
                 data = self.unpackBinFile(self.file)
             else:
                 data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
+                data = data if not self.transpose else data.transpose()
                 
             if time.time() - t0 > 10.0:
                self.Error("TIMEOUT: File was empty for too long...")
@@ -235,7 +237,7 @@ class DCVizPlotter:
         
         data.resize(n, m)
         
-        return data
+        return data if not self.transpose else data.transpose()
             
     
     def unpackArmaMatBin(self, armaFile):   
@@ -243,13 +245,16 @@ class DCVizPlotter:
         armaFormat =  armaFile.readline()
 
         n, m = armaFile.readline().strip().split()
+
         n = int(n)       
         m = int(m)
         
         data = numpy.fromfile(armaFile, dtype=numpy.float64)
-        data.resize((n,m))
+        if n == 4:
+            print data
+        data.resize((m,n))
         
-        return data
+        return data if self.transpose else data.transpose()
     
     def set_figures(self):
         
@@ -269,6 +274,10 @@ class DCVizPlotter:
             s += "self.i%s = self.add_figure(self.%s); " % (fig, fig)
         
             subFigs = self.figMap[fig]
+
+            if type(subFigs) is str:
+                subFigs = [subFigs]
+            
             nFigs = len(subFigs)
             
             for j in range(nFigs):
