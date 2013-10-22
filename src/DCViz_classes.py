@@ -138,7 +138,64 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.subfigure.axes.set_ylabel("-cumsum(F)")
         
         
+class concentrations(DCVizPlotter):
+    
+    nametag = 'concOut*'
+    
+    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_OH','sf_H', 'sf_mass']}
+    species = ['c', 'CO2', 'Ca', 'OH', 'H', 'mass']
 
+    armaBin = True
+    
+    isFamilyMember = True
+#    loadLatest = True
+    loadSequential = True
+    
+    getNumberForSort = lambda _s, a: int(find("concOut(\d+?)\.arma", a)[0])
+    
+    stack = "H"
+    
+    ziggyMagicNumber = 25 
+    
+    def plot(self, data):
+        
+        for i, spec in enumerate(self.species):
+            subfigure = eval('self.sf_' + spec)
+            
+            subfigure.plot(data.data[i, :], 'b-*')
+    
+        for spec in self.species:
+            subfigure = eval('self.sf_' + spec)
+            
+            subfigure.set_title('[%s]' % spec)
+            subfigure.axes.get_xaxis().set_major_locator(pylab.MaxNLocator(integer=True));
+            subfigure.axes.set_ybound(0)
+        
+        
+        __N = self.getNumberForSort(self.filepath)
+        self.sf_c.set_title(str(__N) + " [c]")
+        self.sf_c.set_ylabel("conc. [M/l]")
+                
+        
+
+
+class molecules(DCVizPlotter):
+    
+    nametag = "dist\_out\_Molecule.+?arma3D"
+    
+    armaBin = True    
+
+    
+    def plot(self, data):
+        
+        data = numpy.sum(data.data, axis=2)
+        
+        n = data.shape[0]
+
+        data = data[n/4:3.2*n/4, n/3:3*n/4]        
+        
+        im = self.subfigure.imshow(data, cmap=pylab.cm.spectral, interpolation="lanczos");
+        self.figure.colorbar(im)
 
 class mdOutCpp(DCVizPlotter):
     
@@ -156,12 +213,16 @@ class mdOutCpp(DCVizPlotter):
     
     getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
     
-    _cfg = open("/home/jorgehog/QtProjects/MD/configMD.cfg", "r").read()    
-    _def = open("/home/jorgehog/QtProjects/MD/src/defines.h", "r").read()
     
     c = [numpy.random.uniform(size=(3,)) for i in range(10)]
     
 #    figMap = {"fig": ["subfigure", "eventFigure"]}
+    
+    try:
+        _cfg = open("/home/jorgehog/QtProjects/cppMD/configMD.cfg", "r").read()    
+        _def = open("/home/jorgehog/QtProjects/cppMD/src/defines.h", "r").read()
+    except:
+        pass
     
     def fetchSize(self):
 
@@ -175,7 +236,7 @@ class mdOutCpp(DCVizPlotter):
     
     def plot(self, data):
 
-        x, y = data
+        x, y = data.data
 
         _colors = ["r", '0.75']
         _sizes = [50, 100]        
@@ -186,15 +247,16 @@ class mdOutCpp(DCVizPlotter):
         Lx = NX*padScale
         Ly = NY*padScale
         
+        
         _c = [_colors[i%2] for i in range(N)]
         _s = [_sizes[i%2] for i in range(N)]   
         
-        with open("/home/jorgehog/tmp/coolMiddle.arma", 'rb') as f:
-            _data = self.unpackArmaMatBin(f)
-            sliceCorner = [_data[0, 0], _data[0, 1]]
-            sliceSize1 = _data[1, 0]-_data[0, 0] 
-            sliceSize2 = _data[1, 1]-_data[0, 1]
-            self.subfigure.add_patch(pylab.Rectangle(sliceCorner, sliceSize1, sliceSize2, fill=False, color=numpy.random.rand(3,)))
+#        with open("/home/jorgehog/tmp/coolMiddle.arma", 'rb') as f:
+#            _data = self.unpackArmaMatBin(f)
+#            sliceCorner = [_data[0, 0], _data[0, 1]]
+#            sliceSize1 = _data[1, 0]-_data[0, 0] 
+#            sliceSize2 = _data[1, 1]-_data[0, 1]
+#            self.subfigure.add_patch(pylab.Rectangle(sliceCorner, sliceSize1, sliceSize2, fill=False, color=numpy.random.rand(3,)))
         
         self.subfigure.scatter(x, y, color=_c, s=_s, edgecolor='black')
 #        self.subfigure.axes.fill_between([0, Lx], [Ly, Ly], [(1-W)*Ly, (1-W)*Ly], facecolor='red', alpha=0.1)

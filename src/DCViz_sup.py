@@ -12,6 +12,9 @@ class dataGenerator:
         if len(data.shape) == 2:
             self.n, self.m = data.shape
             self.getD = self.get2Ddata
+        elif len(data.shape) == 3:
+            self.n, self.m, self.l = data.shape
+            self.getD = self.get3Ddata
         else:
             self.m, = data.shape
             self.n = 1
@@ -30,6 +33,9 @@ class dataGenerator:
             return self.data
         else:
             raise IndexError("Index out of bounds.")
+    
+    def get3Ddata(self, i):
+        raise NotImplementedError()
 
     def get2Ddata(self, i):
         return self.data[:, i]
@@ -64,6 +70,7 @@ class DCVizPlotter:
     figMap = {}
 
     armaBin = False
+    
     fileBin = False
     Ncols = None
     transpose = False    
@@ -244,17 +251,17 @@ class DCVizPlotter:
 
         armaFormat =  armaFile.readline()
 
-        n, m = armaFile.readline().strip().split()
-
-        n = int(n)       
-        m = int(m)
+        dims = armaFile.readline().strip().split()
         
         data = numpy.fromfile(armaFile, dtype=numpy.float64)
-        if n == 4:
-            print data
-        data.resize((m,n))
+
+        if self.transpose:
+            data.resize(*tuple([int(d) for d in dims][::-1]))
+            data = data.transpose()
+        else:
+            data.resize(*tuple([int(d) for d in dims]))
         
-        return data if self.transpose else data.transpose()
+        return data
     
     def set_figures(self):
         
@@ -519,7 +526,10 @@ class DCVizPlotter:
         
     def show(self, drawOnly=False):
         for fig in self.figures:
-            fig[0].canvas.draw()
+            try:
+                fig[0].canvas.draw()
+            except:
+                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)")
             if not drawOnly:
                 fig[0].show()
         
