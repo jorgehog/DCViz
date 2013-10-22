@@ -142,10 +142,11 @@ class concentrations(DCVizPlotter):
     
     nametag = 'concOut*'
     
-    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_OH','sf_H', 'sf_mass']}
-    species = ['c', 'CO2', 'Ca', 'OH', 'H', 'mass']
+    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_H','sf_OH', 'sf_mass']}
+    species = ['c', 'CO2', 'Ca', 'H', 'OH', 'mass']
 
     armaBin = True
+    transposed = True    
     
     isFamilyMember = True
 #    loadLatest = True
@@ -155,19 +156,26 @@ class concentrations(DCVizPlotter):
     
     stack = "H"
     
-    ziggyMagicNumber = 25 
+    ziggyMagicNumber = 25
     
     def plot(self, data):
-        
+#        
+#        for l in zip(*data):
+#            for i in l:
+#                print "%.4e  " % i,
+#            print
+                        
+            
         for i, spec in enumerate(self.species):
             subfigure = eval('self.sf_' + spec)
             
-            subfigure.plot(data.data[i, :], 'b-*')
+            subfigure.plot(data[i], 'b-*')
     
         for spec in self.species:
             subfigure = eval('self.sf_' + spec)
             
             subfigure.set_title('[%s]' % spec)
+            
             subfigure.axes.get_xaxis().set_major_locator(pylab.MaxNLocator(integer=True));
             subfigure.axes.set_ybound(0)
         
@@ -284,6 +292,18 @@ class mdOutCpp(DCVizPlotter):
 #            self.eventFigure.plot(numpy.arange(__N), col[:__N]/T0, c=self.c[l])
 #        self.eventFigure.axes.set_xlim([0, _N-1])
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
+
+class MD_EVENTS(DCVizPlotter):
+    
+    nametag = "mdEventsOut*"
+    
+    armaBin = True
+    
+    def plot(self, data):
+        
+        t1, t2, t3, t4, d1, d2, d3 = data
+        
+        self.subfigure.plot(t2, 'b.')
 
 class MD_OUT(DCVizPlotter):
     

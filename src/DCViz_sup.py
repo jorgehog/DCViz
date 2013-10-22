@@ -106,7 +106,9 @@ class DCVizPlotter:
         self.plotted = False
         self.stopped = False
         self.SIGINT_CAPTURED = False
-            
+        self.makeGif = False
+        self.end_seq = False
+        
         self.figures = []
     
         self.filepath = filepath
@@ -183,7 +185,18 @@ class DCVizPlotter:
 
                 self.filepath = familyMembers[self.nextInLine]
                                     
+                prev = self.nextInLine
                 self.nextInLine = (self.nextInLine + self.ziggyMagicNumber)%N
+    
+                if (self.nextInLine < prev and self.makeGif) or self.end_seq:
+                    
+                    if self.end_seq:
+                        self.dynamic = False
+                                        
+                    self.end_seq = True
+                    
+                    if self.toFile:
+                        print "WARNING: ToFile and makeGif should not be used together."
                 
                 self.file = None
                 
@@ -251,15 +264,26 @@ class DCVizPlotter:
 
         armaFormat =  armaFile.readline()
 
-        dims = armaFile.readline().strip().split()
+        dims = tuple([int(d) for d in armaFile.readline().strip().split()])
         
-        data = numpy.fromfile(armaFile, dtype=numpy.float64)
+        data = numpy.fromfile(armaFile, dtype=numpy.float64).transpose()
 
+        if len(dims) == 2:
+
+            _data = numpy.zeros(dims)            
+            for i in range(dims[1]):
+                _data[:, i] = data[i*dims[0]:(i+1)*dims[0]]
+                
+            data = _data
+                
+        
         if self.transpose:
-            data.resize(*tuple([int(d) for d in dims][::-1]))
+            data.resize(dims)
             data = data.transpose()
         else:
-            data.resize(*tuple([int(d) for d in dims]))
+            data.resize(dims)
+        
+                
         
         return data
     
@@ -273,6 +297,9 @@ class DCVizPlotter:
         i = 0
         self.figures = []
         
+        if self.makeGif:
+            self.savedImages = []
+        
         if not self.figMap:
             self.figMap = {"figure": ["subfigure"]}
         
@@ -281,6 +308,9 @@ class DCVizPlotter:
             s += "self.i%s = self.add_figure(self.%s); " % (fig, fig)
         
             subFigs = self.figMap[fig]
+            
+            if self.makeGif:
+                self.savedImages.append([])
 
             if type(subFigs) is str:
                 subFigs = [subFigs]
@@ -288,6 +318,7 @@ class DCVizPlotter:
             nFigs = len(subFigs)
             
             for j in range(nFigs):
+                
                 
                 if self.stack == "V":
                     s += "self.%s = self.%s.add_subplot(%d, 1, %d); " % (subFigs[j], fig, nFigs, j+1)
@@ -310,7 +341,7 @@ class DCVizPlotter:
             i = 0
             while not self.canStart:
                 time.sleep(0.01)
-                i+=1
+                i+=1 
                 if i > 500:
                     self.Error("TIMEOUT: Figures wasn't set...")
                     self.Exit()
@@ -384,7 +415,7 @@ class DCVizPlotter:
         self.manageFigures()
 
         while (self.shouldReplot()):
- 
+            
             self.clear()
            
             data = self.get_data(setUpFamily = self.isFamilyMember)
@@ -393,19 +424,56 @@ class DCVizPlotter:
             self.showFigures()
             self.plotted = True
 
-                
             if self.dynamic:
-                self.sleep()     
+                
+                if self.makeGif:
+                    self.prepGif()
+                else:
+                    self.sleep() 
+                    
             else:
-                if not self.useGUI and not self.toFile:
+                if not self.useGUI and not self.toFile and not self.makeGif:
                     self.stall()
                 break
                 
         if not self.useGUI:
             if self.toFile:
                 self.saveFigs()
+            elif self.makeGif:
+                self.makeGifs()
             self.close()
+
+    def prepGif(self):
+        self.saveFigs()
+    
+    def makeGifs(self):
         
+        
+            
+        path, fname = os.path.split(self.filepath)
+        
+        dirname = "DCViz_out"
+        dirpath = pjoin(path, dirname)
+        
+        thisDir = os.getcwd()
+        os.chdir(dirpath)
+
+        for i in range(len(zip(*self.figures)[0])):
+            
+            if len(self.savedImages[i]) < 2:
+                print "Making a Gif requires more than 1 image."
+                print "images: ", self.savedImages
+                continue
+
+            imgs = " ".join(self.savedImages[i])
+            gifName = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".gif"
+
+            print "Making gif %s (%d/%d) out of %s-%s" % (gifName, i+1, len(zip(*self.figures)[0]), self.savedImages[i][0], self.savedImages[i][-1])
+            os.system("convert -delay %g %s -loop 0 %s" % (self.delay, imgs, gifName))            
+        
+        os.chdir(thisDir)
+                   
+           
     def stall(self):
         raw_input("[%s] Press any key to exit" % "DCViz".center(10))
 
@@ -510,11 +578,15 @@ class DCVizPlotter:
             figpath = pjoin(dirpath, figname)
             fig.savefig(figpath)
 
+            if self.makeGif:
+                self.savedImages[i].append(figname)
+
             i += 1
         
         print "[%s] Figure(s) successfully saved." % "DCViz".center(10)
         
-            
+    
+    
     def add_figure(self, fig):
         self.figures.append([fig])
         self.nFig += 1

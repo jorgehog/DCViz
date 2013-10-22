@@ -72,7 +72,7 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
         
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
-def main(path, dynamic, delay = None, toFile=False, fs=None, silent=False):
+def main(path, dynamic, delay = None, toFile=False, fs=None, silent=False, makeGif=False):
 
     if fs:
         pylab.rcParams['figure.figsize'] = fs
@@ -84,6 +84,8 @@ def main(path, dynamic, delay = None, toFile=False, fs=None, silent=False):
         
     if delay is not None and type(delay) in [int, float]:
         instance.delay = delay
+        instance.makeGif = makeGif
+    
     
     instance.mainloop()
 
@@ -150,6 +152,7 @@ class DCVizThread(threading.Thread):
 if __name__ == "__main__":
     dynamic = False
     toFile = False   
+    makeGif = False
     delay = None
     
     try:
@@ -166,8 +169,22 @@ if __name__ == "__main__":
                                 
                     
             sys.argv.remove("-d")
+        
+        if "-g" in sys.argv:
+            if not dynamic:
+                print "Making GIF requires dynamic mode."
+                sys.exit(1)
+            
+            makeGif=True
+            sys.argv.remove("-g")
+            
     
         elif "-f" in sys.argv:
+            
+            if makeGif:
+                print "Either make a gif or dump figures."
+                sys.exit(1)
+            
             toFile = True
             sys.argv.remove("-f")
 
@@ -201,4 +218,4 @@ if __name__ == "__main__":
     if toFile:
         mainToFile(path)
     else:
-        main(path, dynamic, delay=delay, fs=figSize)
+        main(path, dynamic, delay=delay, fs=figSize, makeGif=makeGif)
