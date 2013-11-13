@@ -142,8 +142,9 @@ class concentrations(DCVizPlotter):
     
     nametag = 'concOut*'
     
-    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_H','sf_OH', 'sf_mass']}
-    species = ['c', 'CO2', 'Ca', 'H', 'OH', 'mass']
+    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_H','sf_OH', 'sf_mass', 'sf_cl', 'sf_ph']}
+#    figMap = {'fig' : ['sf_c'], 'fig2' : 'sf_CO2', 'fig3' : 'sf_Ca', 'fig4' : 'sf_H', 'fig5' : 'sf_OH', 'fig6' : 'sf_mass', 'fig7' : 'sf_cl', 'fig8' : ['sf_ph']}
+    species = ['c', 'CO2', 'Ca', 'H', 'OH', 'mass', 'cl', 'ph']
 
     armaBin = True
     transposed = True    
@@ -156,7 +157,9 @@ class concentrations(DCVizPlotter):
     
     stack = "H"
     
-    ziggyMagicNumber = 25
+    ziggyMagicNumber = 1000
+    
+    gifLoopDelay = 5
     
     def plot(self, data):
 #        
@@ -169,7 +172,7 @@ class concentrations(DCVizPlotter):
         for i, spec in enumerate(self.species):
             subfigure = eval('self.sf_' + spec)
             
-            subfigure.plot(data[i], 'b-*')
+            subfigure.plot(data[i][1:], 'b-*')
     
         for spec in self.species:
             subfigure = eval('self.sf_' + spec)
@@ -178,7 +181,6 @@ class concentrations(DCVizPlotter):
             
             subfigure.axes.get_xaxis().set_major_locator(pylab.MaxNLocator(integer=True));
             subfigure.axes.set_ybound(0)
-        
         
         __N = self.getNumberForSort(self.filepath)
         self.sf_c.set_title(str(__N) + " [c]")
@@ -205,17 +207,62 @@ class molecules(DCVizPlotter):
         im = self.subfigure.imshow(data, cmap=pylab.cm.spectral, interpolation="lanczos");
         self.figure.colorbar(im)
 
+
+#==============================================================================
+# avconv -f image2 -y -r 24 -i mdPos%05d_0.png -b:v 1000k simple2D_LJ.avi
+#==============================================================================
+
+class forPress(DCVizPlotter):
+    
+    nametag = "FOR_PRESS\.tmp"
+    
+    figMap = {"fig": ["cl", "qm"]}
+    
+    cl_v = [0]
+    qm_v = []    
+    
+    def superAppend(self, *args):
+        
+        for a in args:
+            self.qm_v.append(a)
+    
+    def plot(self, data):
+    
+        self.qm.axes.set_ylabel("P(M)")        
+        self.cl.axes.set_ylabel("P(M)")
+        self.qm.axes.set_xlabel("Measurement (M)")
+        
+        self.cl_v.append(self.cl_v[0])
+        self.superAppend(*list(numpy.random.normal(size=len(self.cl_v))))
+        
+        if len(self.cl_v) == 2:
+            return
+        
+        self.cl.hist(self.cl_v, 20, normed=True)
+        self.qm.hist(self.qm_v, 20, normed=True)
+
+        self.cl.axes.set_xlim([-3, 3])
+        self.qm.axes.set_xlim([-3, 3])
+        
+        self.qm.axes.set_ylim([0, 1])        
+        self.cl.axes.set_ylim([0, 1])
+        
+        path, name = os.path.split(self.filepath)
+        _file = os.path.join(path, "DCViz_out", "FOR_PRESS_0.png")
+        if os.path.exists(_file):
+            os.rename(_file, _file.replace("_0", "_" + str(len(self.cl_v)-2).rjust(5, "0")))
+
 class mdOutCpp(DCVizPlotter):
     
     nametag = "mdPos\d+?\.arma"
     
     armaBin = True
-    transpose = True    
+#    transpose = True    
     
     isFamilyMember = True
-#    loadSequential = True
-    loadLatest = True
-    ziggyMagicNumber = 10
+    loadSequential = True
+#    loadLatest = True
+    ziggyMagicNumber = 1
     
 #    stack = "H"
     
@@ -247,7 +294,7 @@ class mdOutCpp(DCVizPlotter):
         x, y = data.data
 
         _colors = ["r", '0.75']
-        _sizes = [50, 100]        
+        _sizes = [100, 200]        
         
         NX, NY, padScale, W = self.fetchSize();
         

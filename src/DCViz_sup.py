@@ -82,6 +82,8 @@ class DCVizPlotter:
     loadSequential = False
     getNumberForSort = None
     ziggyMagicNumber = 1
+    smartIncrement = True
+
 
     skippedRows = []
     skipCols = 0
@@ -97,6 +99,8 @@ class DCVizPlotter:
     
     canStart = False
     
+    gifLoopDelay = 0
+    
     anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'    
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
@@ -110,7 +114,7 @@ class DCVizPlotter:
         self.end_seq = False
         
         self.figures = []
-    
+        
         self.filepath = filepath
         self.file = None
         
@@ -126,6 +130,7 @@ class DCVizPlotter:
         if self.Ncols is None and self.fileBin:
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
             self.Exit()
+        
     
     
     def signal_handler(self, signal, frame):
@@ -138,22 +143,28 @@ class DCVizPlotter:
             return self.familyName + " (family)"
         return ".".join(os.path.split(self.filepath)[-1].split(".")[0:-1])
 
+    def get_family(self):
+        
+        familyHome, _ = os.path.split(self.filepath)
+            
+        if not familyHome:
+            self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
+            self.Exit()
+            
+        familyNames = [name for name in os.listdir(familyHome)\
+                        if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
+       
+        familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])     
+        
+        return familyMembers
+
     def get_data(self, setUpFamily):
 
         if setUpFamily:
 
-            familyHome, _ = os.path.split(self.filepath)
+            familyMembers = self.get_family()
             
-            if not familyHome:
-                self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
-                self.Exit()
-                
-            familyNames = [name for name in os.listdir(familyHome)\
-                            if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
-           
-            familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])
-            N = len(familyMembers)
-            
+            N = len(familyMembers)            
 
             if self.loadLatest:
                 
@@ -179,15 +190,21 @@ class DCVizPlotter:
                 
             elif self.loadSequential:
                 
+                
                 if self.getNumberForSort:
+                    
                     familyMembers = sorted(familyMembers, key=self.getNumberForSort)
-
-
+                    
+                    
                 self.filepath = familyMembers[self.nextInLine]
-                                    
+      
                 prev = self.nextInLine
+                
+                
                 self.nextInLine = (self.nextInLine + self.ziggyMagicNumber)%N
-    
+                
+                    
+                
                 if (self.nextInLine < prev and self.makeGif) or self.end_seq:
                     
                     if self.end_seq:
@@ -404,6 +421,22 @@ class DCVizPlotter:
 
         time.sleep(self.delay - int(self.delay))
 
+    def initFamily(self):
+        
+        if self.isFamilyMember and self.loadSequential and self.smartIncrement and self.getNumberForSort:
+        
+            familyMembers = self.get_family()
+            
+            if self.getNumberForSort:
+                familyMembers = sorted(familyMembers, key=self.getNumberForSort)
+                
+                inc = self.getNumberForSort(familyMembers[1]) - self.getNumberForSort(familyMembers[0])    
+                
+            self.ziggyMagicNumber /= inc
+            
+            if self.ziggyMagicNumber < 1:
+                self.ziggyMagicNumber = 1
+                
     def mainloop(self):
         
         if not self.armaBin:
@@ -413,6 +446,7 @@ class DCVizPlotter:
                 return
 
         self.manageFigures()
+        self.initFamily()
 
         while (self.shouldReplot()):
             
@@ -469,7 +503,7 @@ class DCVizPlotter:
             gifName = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".gif"
 
             print "Making gif %s (%d/%d) out of %s-%s" % (gifName, i+1, len(zip(*self.figures)[0]), self.savedImages[i][0], self.savedImages[i][-1])
-            os.system("convert -delay %g %s -loop 0 %s" % (self.delay, imgs, gifName))            
+            os.system("convert -delay %g %s -loop %g %s" % (self.delay, imgs, self.gifLoopDelay, gifName))            
         
         os.chdir(thisDir)
                    
