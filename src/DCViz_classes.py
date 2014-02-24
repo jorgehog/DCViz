@@ -3,6 +3,8 @@
 
 import sys, re, os, inspect
 from re import findall as find
+from os.path import split as psplit
+from os.path import join as pjoin
 
 try:
     import numpy
@@ -84,7 +86,23 @@ class myTestClass(DCVizPlotter):
         self.subfig1.set_xlim([0, 50])
           
         self.subfig1.plot(column1)
-  
+
+
+class results(DCVizPlotter):
+    nametag = "msd\.dat|vacf\.dat"
+    isFamilyMember = True
+    
+    def plot(self, data):
+        
+        for i, fdata in enumerate(data):
+            t, vr, d = fdata
+            self.subfigure.plot(t, d, label=self.familyFileNames[i].strip(".dat"))
+        
+        pstar = 0.2
+        Tstar = 0.5
+        self.subfigure.plot(t, numpy.ones(len(t)) + 10**(0.05 + 0.07*pstar - (1.04 + 0.1*pstar)/Tstar))
+        self.subfigure.axes.set_ylabel("D")
+        self.subfigure.legend()
 
 class myTestClassFamily(DCVizPlotter):
     nametag =  'testcaseFamily\d\.dat' #filename with regex support
@@ -252,6 +270,62 @@ class forPress(DCVizPlotter):
         if os.path.exists(_file):
             os.rename(_file, _file.replace("_0", "_" + str(len(self.cl_v)-2).rjust(5, "0")))
 
+import math
+class virials(DCVizPlotter):
+    
+    nametag = "w\_t\_HO\_COL\_N(\d+)\.dat"
+    
+    isFamilyMember = True
+    
+#    figMap = {"fig" : ("subfigure", "phasefigure")}
+    
+    def plot(self, data):
+        
+        for i, _data in enumerate(data):
+            N = re.findall(self.nametag, self.familyFileNames[i])[0]
+            
+            if N == "2":
+                continue
+            elif int(N) == 42:
+                _data.data[:1][:] = 0
+            
+            w, T, HO, COL = _data
+        
+            if COL.sum() != COL.sum():
+                COL = 0
+    
+            V = HO + COL
+            
+            I = numpy.where(V > 0)
+            
+
+            l = "N=%s" % N              
+            
+            print l
+            for o, E in zip(w, T+V):
+                print "%g   %g"  % (o, E)
+            print "------------------------------"
+            
+            GAMMA = T[I]/V[I]
+            
+            DGAMMA = numpy.diff(GAMMA)            
+            
+            
+            self.subfigure.plot(w[I], GAMMA, label=l)
+#            self.phasefigure.plot(w[I][:-1], DGAMMA, label=l)            
+            
+            
+#        self.phasefigure.plot([0, 1], [0, 0], "k--", label="NoCor")
+
+        self.subfigure.legend(loc=4)
+        self.subfigure.set_xlabel("\omega")
+        self.subfigure.set_ylabel("T/V")
+#        self.phasefigure.legend()        
+
+#        self.phasefigure.set_xlabel("\omega")
+#        self.phasefigure.set_ylabel("d(T/V)/dw")
+                
+
 class mdOutCpp(DCVizPlotter):
     
     nametag = "mdPos\d+?\.arma"
@@ -260,8 +334,8 @@ class mdOutCpp(DCVizPlotter):
 #    transpose = True    
     
     isFamilyMember = True
-    loadSequential = True
-#    loadLatest = True
+#    loadSequential = True
+    loadLatest = True
     ziggyMagicNumber = 1
     
 #    stack = "H"
@@ -271,23 +345,6 @@ class mdOutCpp(DCVizPlotter):
     
     c = [numpy.random.uniform(size=(3,)) for i in range(10)]
     
-#    figMap = {"fig": ["subfigure", "eventFigure"]}
-    
-    try:
-        _cfg = open("/home/jorgehog/QtProjects/cppMD/configMD.cfg", "r").read()    
-        _def = open("/home/jorgehog/QtProjects/cppMD/src/defines.h", "r").read()
-    except:
-        pass
-    
-    def fetchSize(self):
-
-        NX = re.findall("#define ENS_NX (\d+)", self._def)[0]
-        NY = re.findall("#define ENS_NY (\d+)", self._def)[0]
-        
-        W = re.findall("Events.*?Thermostats.*?widthFactor\s*=\s*(.+?)\;", self._cfg, re.DOTALL)[0]
-        padScale = re.findall("solver.*?tightness\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
-        
-        return int(NX), int(NY), float(padScale), float(W)
     
     def plot(self, data):
 
@@ -296,11 +353,9 @@ class mdOutCpp(DCVizPlotter):
         _colors = ["r", '0.75']
         _sizes = [100, 200]        
         
-        NX, NY, padScale, W = self.fetchSize();
-        
-        N = NX*NY
-        Lx = NX*padScale
-        Ly = NY*padScale
+        N = 2
+        Lx = 1
+        Ly = 1
         
         
         _c = [_colors[i%2] for i in range(N)]
@@ -348,10 +403,50 @@ class MD_EVENTS(DCVizPlotter):
     
     def plot(self, data):
         
-        t1, t2, t3, t4, d1, d2, d3 = data
+        print data.shape
+        t1, t2, t3, t4, d1, d2, d3, a, b, c = data
         
-        self.subfigure.plot(t2, 'b.')
+        self.subfigure.plot(d1, 1/t1, 'b.')
 
+import glob
+class molsim2(DCVizPlotter):
+    
+    nametag = "ChemPot|AvPress"
+    
+    isFamilyMember = True
+    
+    def plot(self, data):
+        
+        rho = "0.001 0.003 0.006 0.009 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.2 0.33 0.5 0.6 0.7 0.8 0.9"
+        rho = [float(r) for r in rho.split()]
+        
+        s = 0
+        e = len(rho)-1        
+        
+        chem, pres = data
+        
+        self.subfigure.plot(chem.data[s:e], pres.data[s:e])
+        
+        for c, p, r in zip(chem.data[s:e], pres.data[s:e], rho[s:e]):
+            
+            self.subfigure.text(c, p, str(r))
+
+class molsim3(DCVizPlotter):
+    
+    nametag="lj\.densplot"
+
+#    isFamilyMember = True
+
+    def plot(self, data):
+        
+#        self.dictify(data)
+        
+        n, d1, d2 = data
+        
+        self.subfigure.plot(n, d1)
+        self.subfigure.plot(n, d2)
+    
+    
 class MD_OUT(DCVizPlotter):
     
     nametag = "MD_out\d*\.dat"

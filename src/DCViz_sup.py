@@ -101,7 +101,7 @@ class DCVizPlotter:
     
     gifLoopDelay = 0
     
-    anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'    
+    anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
         self.dynamic = dynamic
@@ -157,6 +157,14 @@ class DCVizPlotter:
         familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])     
         
         return familyMembers
+
+    def dictify(self, data):
+
+        _data = {}        
+        for fdata, name in zip(data, self.familyFileNames):
+            _data[name] = fdata
+            
+        data = _data
 
     def get_data(self, setUpFamily):
 
