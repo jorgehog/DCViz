@@ -270,7 +270,8 @@ class forPress(DCVizPlotter):
         if os.path.exists(_file):
             os.rename(_file, _file.replace("_0", "_" + str(len(self.cl_v)-2).rjust(5, "0")))
 
-import math
+
+
 class virials(DCVizPlotter):
     
     nametag = "w\_t\_HO\_COL\_N(\d+)\.dat"
@@ -289,14 +290,14 @@ class virials(DCVizPlotter):
             elif int(N) == 42:
                 _data.data[:1][:] = 0
             
-            w, T, HO, COL = _data
+            w, T, HO, COL, _ = _data
         
             if COL.sum() != COL.sum():
                 COL = 0
     
             V = HO + COL
             
-            I = numpy.where(V > 0)
+            I = numpy.where(V > 1E-10)
             
 
             l = "N=%s" % N              
@@ -311,36 +312,36 @@ class virials(DCVizPlotter):
             DGAMMA = numpy.diff(GAMMA)            
             
             
-            self.subfigure.plot(w[I], GAMMA, label=l)
-#            self.phasefigure.plot(w[I][:-1], DGAMMA, label=l)            
+            self.subfigure.plot(w[I], GAMMA, label=l, marker='^', linestyle="--")
+#            self.phasefigure.plot(w[I][:-1], DGAMMA, label=l, marker='^', linestyle="--")            
             
             
-#        self.phasefigure.plot([0, 1], [0, 0], "k--", label="NoCor")
+#        self.phasefigure.plot(T[I], T[I], "k--", label="NoCoulomb")
 
         self.subfigure.legend(loc=4)
         self.subfigure.set_xlabel("\omega")
         self.subfigure.set_ylabel("T/V")
-#        self.phasefigure.legend()        
 
-#        self.phasefigure.set_xlabel("\omega")
-#        self.phasefigure.set_ylabel("d(T/V)/dw")
+#        self.phasefigure.legend()        
+#        self.phasefigure.set_ylabel("D(T/V)/Dw")
+#        self.phasefigure.set_xlabel("w")
                 
 
 class mdOutCpp(DCVizPlotter):
     
-    nametag = "mdPos\d+?\.arma"
+    nametag = "ignisPos\d+?\.arma"
     
+    transpose = True
     armaBin = True
-#    transpose = True    
     
     isFamilyMember = True
-#    loadSequential = True
-    loadLatest = True
-    ziggyMagicNumber = 1
+    loadSequential = True
+#    loadLatest = True
+    ziggyMagicNumber = 50
     
 #    stack = "H"
     
-    getNumberForSort = lambda _s, a: int(find("mdPos(\d+?)\.arma", a)[0])
+    getNumberForSort = lambda _s, a: int(find("ignisPos(\d+?)\.arma", a)[0])
     
     
     c = [numpy.random.uniform(size=(3,)) for i in range(10)]
@@ -349,6 +350,8 @@ class mdOutCpp(DCVizPlotter):
     def plot(self, data):
 
         x, y = data.data
+        
+        print x.min(), x.max(), y.min(), y.max()
 
         _colors = ["r", '0.75']
         _sizes = [100, 200]        
