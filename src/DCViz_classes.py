@@ -1,8 +1,9 @@
 
 # -*- coding: utf-8 -*-
 
-import sys, re, os, inspect
+import sys, re, os, inspect, datetime
 from re import findall as find
+from random import shuffle
 
 try:
     import numpy
@@ -19,6 +20,7 @@ except:
 #==============================================================================
 
 from matplotlib import rc
+from matplotlib import rcParams
 
 try:
     rc('text', usetex=True)
@@ -140,54 +142,182 @@ class standardBinaryArmaVec(DCVizPlotter):
         
 class concentrations(DCVizPlotter):
     
-    nametag = 'concOut*'
+    nametag = 'concOut.+?\.arma'
     
-    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_H','sf_OH', 'sf_mass', 'sf_cl', 'sf_ph']}
-#    figMap = {'fig' : ['sf_c'], 'fig2' : 'sf_CO2', 'fig3' : 'sf_Ca', 'fig4' : 'sf_H', 'fig5' : 'sf_OH', 'fig6' : 'sf_mass', 'fig7' : 'sf_cl', 'fig8' : ['sf_ph']}
-    species = ['c', 'CO2', 'Ca', 'H', 'OH', 'mass', 'cl', 'ph']
+#    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_mass', 'sf_cl', 'sf_ph']}
+    figMap = {'fig' : ['sf_c'], 'fig2' : 'sf_CO2', 'fig3' : 'sf_Ca', 'fig6' : 'sf_mass', 'fig7' : 'sf_cl', 'fig8' : ['sf_ph']}
+    species = ['c', 'CO2', 'Ca', 'mass', 'cl', 'ph']
+    
+    ylim = {'c' : [0], 
+            'CO2' : [0], 
+            'Ca' : [], 
+            'mass': [0], 
+            'cl': [0], 
+            'ph': [1, 14]}
+
+    ylab = {'c' : [], 
+            'CO2' : [], 
+            'Ca' : [], 
+            'mass': 'Density CaCO3 [mg/cm$^2$]', 
+            'cl': [], 
+            'ph': 'pH'}
+            
+    nightmareAxes = ['c', 'CO2', 'Ca']
 
     armaBin = True
     transposed = True    
     
     isFamilyMember = True
-#    loadLatest = True
-    loadSequential = True
+    loadLatest = True
+#    loadSequential = True
     
     getNumberForSort = lambda _s, a: int(find("concOut(\d+?)\.arma", a)[0])
     
     stack = "H"
     
-    ziggyMagicNumber = 1000
+    ziggyMagicNumber = 10000
     
     gifLoopDelay = 5
     
+    txt = None
+    lsize = 20
+    tsize = 20
+    
     def plot(self, data):
-#        
-#        for l in zip(*data):
-#            for i in l:
-#                print "%.4e  " % i,
-#            print
-                        
-            
+        
+        dt = 0.01       
+        
         for i, spec in enumerate(self.species):
             subfigure = eval('self.sf_' + spec)
             
-            subfigure.plot(data[i][1:], 'b-*')
-    
-        for spec in self.species:
-            subfigure = eval('self.sf_' + spec)
+            subfigure.plot(data[i], 'b-*', markersize=20, markeredgewidth=1, markeredgecolor='k')
             
-            subfigure.set_title('[%s]' % spec)
+            subfigure.set_xlabel('Cell \#', size=self.lsize)
             
+            if spec in self.nightmareAxes:
+                formatter = ticker.ScalarFormatter(useOffset=True)
+                formatter.set_scientific(True)
+                formatter.set_powerlimits([-3, 2])
+                subfigure.axes.get_yaxis().set_major_formatter(formatter)
+                
+                subfigure.axes.get_yaxis().offsetText.set_size(self.tsize)
+
+                
+            for tick in subfigure.axes.yaxis.get_major_ticks():
+                tick.label.set_fontsize(self.tsize)  
+                
             subfigure.axes.get_xaxis().set_major_locator(pylab.MaxNLocator(integer=True));
-            subfigure.axes.set_ybound(0)
-        
+            
+            for tick in subfigure.axes.xaxis.get_major_ticks():
+                tick.label.set_fontsize(self.tsize)             
+                               
+                             
+            
+            if self.ylim[spec]:
+                if len(self.ylim[spec]) == 1:
+                    subfigure.axes.set_ybound(self.ylim[spec][0])
+                else:
+                    subfigure.axes.set_ylim(self.ylim[spec][0])
+                    
+            if self.ylab[spec]:
+                subfigure.set_title(self.ylab[spec], size=self.tsize)
+            else:
+                subfigure.set_title("[%s]" % spec, size=self.tsize)                
+                
+  
+#            
         __N = self.getNumberForSort(self.filepath)
-        self.sf_c.set_title(str(__N) + " [c]")
-        self.sf_c.set_ylabel("conc. [M/l]")
+        s = str(datetime.timedelta(seconds=__N*dt)).split(".")[0]
+#        s = str(__N)
+        print s
+#        if not self.txt:        
+#            self.txt = self.fig.suptitle(s)
+#        else:
+#            self.txt.set_text(s)
+##        
+#        self.sf_c.set_title("[c]")
+#        self.sf_c.set_ylabel("conc. [M/l]")
                 
         
 
+class phreeqc_si(DCVizPlotter):
+    
+    nametag = 'phreeqc.*\.dat'
+
+    skipRows = 1
+    skipCols = 5
+    
+#    figMap = {"fig": ['subfigure', 'molfig',  'hfig', 'phfig']}
+    figMap = {"fig": ['subfigure', 'phfig']}
+    
+    nTotals = 4
+    
+    stack = "V"
+    
+    hugifyFonts = True    
+    fontSize=15    
+    labelSize=40
+    tickSize=1
+    
+    coPrIt = 1.0    
+    
+    def transName(self, name):
+        return name.replace("Brucite", "Mg(OH)2")
+    
+    def plot(self, data):
+        
+        
+        lol = self.getRandomStyles()
+    
+        lol = ['r-*', 'g-+', 'b-^', 'b--x', 'r-o', 'k-x', 'g--^']
+        step, pH, pe, mg, F2, F3, H = data.data[:(3 + self.nTotals)]
+        step[0] = 0
+        step = numpy.array(step)
+        step *= self.coPrIt
+
+        self.phfig.plot(step, pH, "k-x", label='pH')
+#        self.phfig.plot(step, -numpy.log10(F2), label='pF++')
+#        self.phfig.plot(step, -numpy.log10(F3), label='pF+++')
+#        self.phfig.plot(step, -numpy.log10(H), label='pH2')
+        self.phfig.plot(step, -numpy.log10(mg), 'r-x', label='pMg')
+        self.phfig.set_xlabel("Added CO2 [mol]")
+        self.phfig.set_ylabel("pX")       
+        self.phfig.ticklabel_format(useOffset=False, axis='y')
+        self.phfig.legend()
+        self.phfig.set_xbound(1)
+        
+        k = self.nTotals        
+        
+#        for k, _m in enumerate(data.data[3:3+self.nTotals]):
+#            name = self.skippedRows[0].split()[8 + k]
+#            
+#            print _m, name
+#            if "H(0)" not in name:
+#                self.molfig.plot(step, _m, lol[3*k], label=name)
+#            else:
+#                self.hfig.plot(step, _m)
+#                self.hfig.set_ylabel('Conc H2')
+#            
+#        k += 1
+        j = 0
+        for i, phase in enumerate(data.data[(4+k):][::2]):
+
+            name = self.skippedRows[0].split()[8 + k + 2*i]    
+
+            if len(numpy.where(phase != 0)[0]) == 0:        
+                continue
+     
+            self.subfigure.plot(step, phase, lol[j], label=self.transName(name))
+            j+=1
+
+#        self.subfigure.set_xlabel("Reaction step")
+
+#        self.molfig.legend()
+#        self.molfig.set_ylabel("Total concentration")        
+#        
+        self.subfigure.set_ylabel("Change [mol]")
+        self.subfigure.legend(loc=0)
+        self.subfigure.set_xbound(1)
 
 class molecules(DCVizPlotter):
     
@@ -260,8 +390,8 @@ class mdOutCpp(DCVizPlotter):
 #    transpose = True    
     
     isFamilyMember = True
-    loadSequential = True
-#    loadLatest = True
+#    loadSequential = True
+    loadLatest = True
     ziggyMagicNumber = 1
     
 #    stack = "H"
@@ -273,21 +403,7 @@ class mdOutCpp(DCVizPlotter):
     
 #    figMap = {"fig": ["subfigure", "eventFigure"]}
     
-    try:
-        _cfg = open("/home/jorgehog/QtProjects/cppMD/configMD.cfg", "r").read()    
-        _def = open("/home/jorgehog/QtProjects/cppMD/src/defines.h", "r").read()
-    except:
-        pass
-    
-    def fetchSize(self):
 
-        NX = re.findall("#define ENS_NX (\d+)", self._def)[0]
-        NY = re.findall("#define ENS_NY (\d+)", self._def)[0]
-        
-        W = re.findall("Events.*?Thermostats.*?widthFactor\s*=\s*(.+?)\;", self._cfg, re.DOTALL)[0]
-        padScale = re.findall("solver.*?tightness\s*\=\s*(.+?);", self._cfg, re.DOTALL)[0]
-        
-        return int(NX), int(NY), float(padScale), float(W)
     
     def plot(self, data):
 
@@ -296,15 +412,9 @@ class mdOutCpp(DCVizPlotter):
         _colors = ["r", '0.75']
         _sizes = [100, 200]        
         
-        NX, NY, padScale, W = self.fetchSize();
         
-        N = NX*NY
-        Lx = NX*padScale
-        Ly = NY*padScale
-        
-        
-        _c = [_colors[i%2] for i in range(N)]
-        _s = [_sizes[i%2] for i in range(N)]   
+        _c = [_colors[i%2] for i in range(2)]
+        _s = [_sizes[i%2] for i in range(2)]   
         
 #        with open("/home/jorgehog/tmp/coolMiddle.arma", 'rb') as f:
 #            _data = self.unpackArmaMatBin(f)
@@ -320,8 +430,8 @@ class mdOutCpp(DCVizPlotter):
         
         __N = self.getNumberForSort(self.filepath)
         self.subfigure.set_title(str(__N))
-        self.subfigure.axes.set_xlim([0, Lx])
-        self.subfigure.axes.set_ylim([0, Ly])
+        self.subfigure.axes.set_xlim([0, 1])
+        self.subfigure.axes.set_ylim([0, 1])
         
         
 #        try:
