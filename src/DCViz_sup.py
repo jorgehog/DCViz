@@ -71,6 +71,8 @@ class dataGenerator:
 class DCVizPlotter:
     
     figMap = {}
+    
+    nametag = None
 
     armaBin = False
     
@@ -104,8 +106,7 @@ class DCVizPlotter:
     
     gifLoopDelay = 0
     
-    anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*'  
-    
+ 
     hugifyFonts = False
     labelSize= 20
     fontSize = 10 #Only invoked by hugifyFonts = True
@@ -114,8 +115,15 @@ class DCVizPlotter:
     markers = ['*', '+', '^']
     lines   = ['-', '--']
     colors  = ['g', 'b', 'r', 'c', 'k']
+
+    anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
+
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
+        
+        if not self.nametag:
+            raise RuntimeError("An instance of DCViz must have a specified nametag.")
+        
         self.dynamic = dynamic
         self.useGUI = useGUI
         
@@ -174,6 +182,14 @@ class DCVizPlotter:
         familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])     
         
         return familyMembers
+
+    def dictify(self, data):
+
+        _data = {}        
+        for fdata, name in zip(data, self.familyFileNames):
+            _data[name] = fdata
+            
+        data = _data
 
     def get_data(self, setUpFamily):
 
@@ -708,6 +724,6 @@ class DCVizPlotter:
         
     
     def plot(self, data):
-        "I am virtual"
+        raise NotImplementedError("Plot function must be implemented for a DCViz instance.")
     
     

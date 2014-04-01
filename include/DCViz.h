@@ -15,7 +15,6 @@ public:
             DCVizThread.join();
         }
 
-        DCVizThread.detach();
     }
 
     inline void launchGUI();
