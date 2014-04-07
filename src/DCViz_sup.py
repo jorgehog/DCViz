@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import re, numpy, time, signal, os, sys
-import matplotlib.pylab as plab
-from os.path import join as pjoin
 
+import matplotlib.pylab as plab
+
+from matplotlib import rcParams
+from os.path import join as pjoin
+from random import shuffle
 
 class dataGenerator:
     def __init__(self, data):
@@ -68,6 +71,8 @@ class dataGenerator:
 class DCVizPlotter:
     
     figMap = {}
+    
+    nametag = None
 
     armaBin = False
     
@@ -101,9 +106,24 @@ class DCVizPlotter:
     
     gifLoopDelay = 0
     
+ 
+    hugifyFonts = False
+    labelSize= 20
+    fontSize = 10 #Only invoked by hugifyFonts = True
+    tickSize = 2
+    
+    markers = ['*', '+', '^']
+    lines   = ['-', '--']
+    colors  = ['g', 'b', 'r', 'c', 'k']
+
     anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
+
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
+        
+        if not self.nametag:
+            raise RuntimeError("An instance of DCViz must have a specified nametag.")
+        
         self.dynamic = dynamic
         self.useGUI = useGUI
         
@@ -142,6 +162,11 @@ class DCVizPlotter:
         if self.isFamilyMember:
             return self.familyName + " (family)"
         return ".".join(os.path.split(self.filepath)[-1].split(".")[0:-1])
+
+    def getRandomStyles(self):
+        styles =  [col + line + mark for col in self.colors for line in self.lines for mark in self.markers]
+        shuffle(styles)
+        return styles
 
     def get_family(self):
         
@@ -253,6 +278,7 @@ class DCVizPlotter:
         #attempt to reload file untill data is found.
         t0 = time.time()
         while len(data) == 0:
+
             self.reload()
             
             if self.armaBin:
@@ -260,8 +286,16 @@ class DCVizPlotter:
             elif self.fileBin:
                 data = self.unpackBinFile(self.file)
             else:
-                data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
-                data = data if not self.transpose else data.transpose()
+                data = []
+                
+                for line in self.file:
+                    data.append(line.split()[self.skipCols:])
+                
+                data = numpy.array(data, dtype=numpy.float)
+                
+#                data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
+                data = data if self.transpose else data.transpose()
+     
                 
             if time.time() - t0 > 10.0:
                self.Error("TIMEOUT: File was empty for too long...")
@@ -438,8 +472,11 @@ class DCVizPlotter:
             if self.getNumberForSort:
                 familyMembers = sorted(familyMembers, key=self.getNumberForSort)
                 
-                inc = self.getNumberForSort(familyMembers[1]) - self.getNumberForSort(familyMembers[0])    
-                
+                try:
+                    inc = self.getNumberForSort(familyMembers[1]) - self.getNumberForSort(familyMembers[0])    
+                except IndexError:
+                    print "Only one familiyMember present in directory.. set 'smartIncrement = false' will remove this error"
+                    inc = 1
             self.ziggyMagicNumber /= inc
             
             if self.ziggyMagicNumber < 1:
@@ -453,11 +490,14 @@ class DCVizPlotter:
             if breakMe:
                 return
 
+        if self.hugifyFonts:
+            self.hugify()
+
         self.manageFigures()
         self.initFamily()
 
         while (self.shouldReplot()):
-            
+
             self.clear()
            
             data = self.get_data(setUpFamily = self.isFamilyMember)
@@ -564,7 +604,7 @@ class DCVizPlotter:
             self.skippedRows.append(self.file.readline().strip())
        
         anyNumber = self.anyNumber
-        self.rx = re.compile(r'\s*.+?'*self.skipCols + (r'\s*(%s)\s+' % anyNumber)*(self.Ncols - self.skipCols-1) + r'(%s)\s*[\n$]' % anyNumber)    
+        #self.rx = re.compile(r'\s*.+?'*self.skipCols + (r'\s*(%s)\s+' % anyNumber)*(self.Ncols - self.skipCols-1) + r'(%s)\s*[\n$]' % anyNumber)    
         
         return "green"
         
@@ -632,7 +672,18 @@ class DCVizPlotter:
         
         print "[%s] Figure(s) successfully saved." % "DCViz".center(10)
         
-    
+    def hugify(self):
+        rcParams['font.size'] = self.fontSize
+        rcParams['xtick.labelsize'] = self.labelSize
+        rcParams['ytick.labelsize'] = self.labelSize
+        
+        rcParams['ytick.major.size'] = self.labelSize
+        rcParams['ytick.major.width'] = self.tickSize
+        
+        rcParams['xtick.major.size'] = self.labelSize
+        rcParams['xtick.major.width'] = self.tickSize
+        
+        rcParams['axes.labelsize'] = self.labelSize
     
     def add_figure(self, fig):
         self.figures.append([fig])
@@ -645,10 +696,10 @@ class DCVizPlotter:
         
     def show(self, drawOnly=False):
         for fig in self.figures:
-            try:
-                fig[0].canvas.draw()
-            except:
-                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)")
+#            try:
+            fig[0].canvas.draw()
+#            except:
+#                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)\nAlso check all your labels etc. for weird symbols or latex-expressions without assigned $-signs.")
             if not drawOnly:
                 fig[0].show()
         
@@ -678,6 +729,6 @@ class DCVizPlotter:
         
     
     def plot(self, data):
-        "I am virtual"
+        raise NotImplementedError("Plot function must be implemented for a DCViz instance.")
     
     
