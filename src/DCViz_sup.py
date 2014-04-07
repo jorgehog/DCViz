@@ -595,7 +595,12 @@ class DCVizPlotter:
         if self.file:
             if not self.file.closed: 
                 self.file.close()
-        
+
+        N = 0        
+        while not os.path.exists(self.filepath) and N < 10:
+                time.sleep(0.1)
+                N += 1
+                        
         self.file = open(self.filepath , "r")
    
         self.skippedRows = []

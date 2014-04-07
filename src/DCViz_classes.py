@@ -398,19 +398,55 @@ class mdOutCpp(DCVizPlotter):
 #        self.eventFigure.axes.set_xlim([0, _N-1])
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
-class MD_EVENTS(DCVizPlotter):
+class IGNIS_EVENTS(DCVizPlotter):
     
-    nametag = "mdEventsOut*"
+    nametag = "ignisEventsOut*"
     
     armaBin = True
     
+    figMap = {"nfig" : "N",
+              "dnfig": "dN"} 
+        
+    T0 = 0.5      
+    
     def plot(self, data):
         
-        print data.shape
-        t1, t2, t3, t4, d1, d2, d3, a, b, c = data
-        
-        self.subfigure.plot(d1, 1/t1, 'b.')
+        T, N = data
 
+        T = self.T0*T[numpy.where(T != 0)]
+        N = N[numpy.where(N != 0)]     
+
+        s = min([len(N), len(T)])        
+        
+        N = N[:s]
+        T = T[:s]        
+        
+        cN = numpy.cumsum(N)/numpy.cumsum(numpy.ones(len(N)))
+#
+#        r = 100000
+#        cN = numpy.zeros(len(N)-2*r)
+#        for i in range(r, len(N) - r):
+#            cN[i-r] = numpy.mean(N[i-r:i+r])
+
+
+        dN = cN[1:] - cN[:-1]
+        dT = T[1:] - T[:-1]        
+        
+        cut = 10000
+        dN = dN[cut:]
+        dT = dT[cut:]        
+        
+        dNdT = dN/dT        
+        
+        self.N.plot(T, N)
+        self.N.set_ylabel(r"avg N")
+        self.N.set_xlabel("T")
+        self.N.set_xbound(self.T0)
+        self.N.set_ybound(0)
+        self.N.set_title("T = %g" % T[-1])
+        self.dN.plot(dNdT)
+        self.dN.set_title("dN")
+        
 import glob
 class molsim2(DCVizPlotter):
     
