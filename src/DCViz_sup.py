@@ -75,8 +75,9 @@ class DCVizPlotter:
     nametag = None
 
     armaBin = False
-    
+    numpyBin = False    
     fileBin = False
+    
     Ncols = None
     transpose = False    
     
@@ -285,6 +286,8 @@ class DCVizPlotter:
                 data = self.unpackArmaMatBin(self.file)      
             elif self.fileBin:
                 data = self.unpackBinFile(self.file)
+            elif self.numpyBin:
+                data = self.unpackNumpyBin(self.file)
             else:
                 data = []
                 
@@ -306,6 +309,11 @@ class DCVizPlotter:
         self.file.close()
         
         return dataGenerator(data)
+    
+    def unpackNumpyBin(self, binFile):
+        
+        binFile.seek(0)
+        return numpy.load(binFile)
     
     def unpackBinFile(self, binFile):
  

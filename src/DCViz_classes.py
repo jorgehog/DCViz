@@ -154,7 +154,18 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
         
-        
+      
+      
+class KMC_1D(DCVizPlotter):
+
+    nametag = "1DKMC\.npy"
+    
+    numpyBin = True
+    
+    def plot(self, data):
+        print data.data
+        self.subfigure.plot(data.data)
+      
 class concentrations(DCVizPlotter):
     
     nametag = 'concOut.+?\.arma'
@@ -529,23 +540,24 @@ class IGNIS_EVENTS(DCVizPlotter):
     nametag = "ignisEventsOut*"
     
     armaBin = True
+
+    figMap = {"nfig" : ["N", "T", "E"]} 
     
-    figMap = {"nfig" : "N",
-              "dnfig": "dN"} 
-        
-    T0 = 0.5      
+    stack = "V"    
     
     def plot(self, data):
         
-        T, N = data
+        T, N, E = data
 
-        T = self.T0*T[numpy.where(T != 0)]
+        T = T[numpy.where(T != 0)]
         N = N[numpy.where(N != 0)]     
+        E = E[numpy.where(E != 0)]
 
-        s = min([len(N), len(T)])        
+        s = min([len(N), len(T), len(E)])        
         
         N = N[:s]
         T = T[:s]        
+        E = E[:s]
         
         cN = numpy.cumsum(N)/numpy.cumsum(numpy.ones(len(N)))
 #
@@ -562,17 +574,20 @@ class IGNIS_EVENTS(DCVizPlotter):
         dN = dN[cut:]
         dT = dT[cut:]        
         
-        dNdT = dN/dT        
+#        dNdT = dN/dT        
         
-        self.N.plot(T, N)
+        self.N.plot(N)
         self.N.set_ylabel(r"avg N")
-        self.N.set_xlabel("T")
-        self.N.set_xbound(self.T0)
+        self.N.set_xlabel("t")
+        self.N.set_xbound(0)
         self.N.set_ybound(0)
         self.N.set_title("T = %g" % T[-1])
-        self.dN.plot(dNdT)
-        self.dN.set_title("dN")
-        
+        self.T.plot(T)
+        self.T.set_title("T")
+        self.E.plot(E)
+        self.E.set_title("E")
+#"""
+    
 import glob
 class molsim2(DCVizPlotter):
     
