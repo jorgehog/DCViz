@@ -162,9 +162,26 @@ class KMC_1D(DCVizPlotter):
     
     numpyBin = True
     
+    figMap = {"fig": ["zFig", "Efig", "Rfig", "Afig"]}
+    
+#    relative_fig_size = [2, 2]    
+    
     def plot(self, data):
-        print data.data
-        self.subfigure.plot(data.data)
+
+        z, E, Rl, Rr, A1, A2 = data
+        
+        A = numpy.concatenate((A1, A2))        
+        
+        LX, LY = pylab.rcParams['figure.figsize']
+        LY /= 4.5
+                
+        
+        self.zFig.bar(numpy.arange(len(z)), z, linewidth = 0, width=1)
+        self.zFig.set_ylim(0, LY/LX*len(z))
+        self.Efig.plot(E, "b*")
+        self.Rfig.plot(Rl, "b^")
+        self.Rfig.plot(Rr, "r*")
+        self.Afig.plot(A, "bo")
       
 class concentrations(DCVizPlotter):
     
@@ -1369,15 +1386,8 @@ class MIN_OUT(DCVizPlotter):
         grad_plot.axes.get_yaxis().get_label().set_fontsize(30)
         grad_plot.axes.get_xaxis().get_label().set_fontsize(30)
             
-            
 
-#==============================================================================
-# Testbed (not implemented)
-#==============================================================================
-
-def testbed(dynamic):
-    pass
     
         
 if __name__ == "__main__":
-    testbed(False)
+    print "Invalid usage: Use the DCVizWrapper for terminal usage."
