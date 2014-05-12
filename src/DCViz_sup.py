@@ -75,8 +75,9 @@ class DCVizPlotter:
     nametag = None
 
     armaBin = False
-    
+    numpyBin = False    
     fileBin = False
+    
     Ncols = None
     transpose = False    
     
@@ -112,6 +113,9 @@ class DCVizPlotter:
     fontSize = 10 #Only invoked by hugifyFonts = True
     tickSize = 2
     
+    fig_size = None
+    relative_fig_size = None
+    
     markers = ['*', '+', '^']
     lines   = ['-', '--']
     colors  = ['g', 'b', 'r', 'c', 'k']
@@ -123,6 +127,11 @@ class DCVizPlotter:
         
         if not self.nametag:
             raise RuntimeError("An instance of DCViz must have a specified nametag.")
+        
+        if self.fig_size:
+            plab.rcParams['figure.figsize'] = self.fig_size
+        elif self.relative_fig_size:
+            plab.rcParams['figure.figsize'] = [old*scale for old, scale in zip(plab.rcParams['figure.figsize'], self.relative_fig_size)]
         
         self.dynamic = dynamic
         self.useGUI = useGUI
@@ -285,6 +294,8 @@ class DCVizPlotter:
                 data = self.unpackArmaMatBin(self.file)      
             elif self.fileBin:
                 data = self.unpackBinFile(self.file)
+            elif self.numpyBin:
+                data = self.unpackNumpyBin(self.file)
             else:
                 data = []
                 
@@ -306,6 +317,15 @@ class DCVizPlotter:
         self.file.close()
         
         return dataGenerator(data)
+    
+    def unpackNumpyBin(self, binFile):
+        
+        binFile.seek(0)
+        try:
+            data = numpy.load(binFile)
+            return data
+        except:
+            return []
     
     def unpackBinFile(self, binFile):
  

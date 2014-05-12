@@ -157,7 +157,35 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
         
+      
+      
+class KMC_1D(DCVizPlotter):
+
+    nametag = "1DKMC\.npy"
+    
+    numpyBin = True
+    
+    figMap = {"fig": ["zFig", "Efig", "Rfig", "Afig"]}
+    
+#    relative_fig_size = [2, 2]    
+    
+    def plot(self, data):
+
+        z, E, Rl, Rr, A1, A2 = data
         
+        A = numpy.concatenate((A1, A2))        
+        
+        LX, LY = pylab.rcParams['figure.figsize']
+        LY /= 4.5
+                
+        
+        self.zFig.bar(numpy.arange(len(z)), z, linewidth = 0, width=1)
+        self.zFig.set_ylim(0, LY/LX*len(z))
+        self.Efig.plot(E, "b*")
+        self.Rfig.plot(Rl, "b^")
+        self.Rfig.plot(Rr, "r*")
+        self.Afig.plot(A, "bo")
+      
 class concentrations(DCVizPlotter):
     
     nametag = 'concOut.+?\.arma'
@@ -548,40 +576,25 @@ class IGNIS_EVENTS(DCVizPlotter):
         self.subfigure.plot(t2[where(t2!=0)], label=self.familyFileNames[1].replace("_", "-").rstrip(".arma"))
 
         legend()
+
 """
-    figMap = {"fig" : ["subfigure", "E"]}
-    def plot(self, data):
-        
-        S, E = data
-        E /= E[0]
-        
-        S = S[numpy.where(S != 0)]
-        E = E[numpy.where(E != 0)]        
-        
-        
-        self.subfigure.plot(S)
-#        self.subfigure.set_ylim([0.5, 1])
-#        self.subfigure.plot([0, len(S)], [0.806, 0.806])        
-        
-        self.E.plot(E)
-"""
-"""
-    figMap = {"nfig" : "N",
-              "dnfig": "dN"} 
-        
-    T0 = 0.5      
+    figMap = {"nfig" : ["N", "T", "E"]} 
+    
+    stack = "V"    
     
     def plot(self, data):
         
-        T, N = data
+        T, N, E = data
 
-        T = self.T0*T[numpy.where(T != 0)]
+        T = T[numpy.where(T != 0)]
         N = N[numpy.where(N != 0)]     
+        E = E[numpy.where(E != 0)]
 
-        s = min([len(N), len(T)])        
+        s = min([len(N), len(T), len(E)])        
         
         N = N[:s]
         T = T[:s]        
+        E = E[:s]
         
         cN = numpy.cumsum(N)/numpy.cumsum(numpy.ones(len(N)))
 #
@@ -598,16 +611,14 @@ class IGNIS_EVENTS(DCVizPlotter):
         dN = dN[cut:]
         dT = dT[cut:]        
         
-        dNdT = dN/dT        
+#        dNdT = dN/dT        
         
-        self.N.plot(T, N)
+        self.N.plot(N)
         self.N.set_ylabel(r"avg N")
-        self.N.set_xlabel("T")
-        self.N.set_xbound(self.T0)
+        self.N.set_xlabel("t")
+        self.N.set_xbound(0)
         self.N.set_ybound(0)
         self.N.set_title("T = %g" % T[-1])
-        self.dN.plot(dNdT)
-        self.dN.set_title("dN")
 """
   
 import glob
@@ -1394,15 +1405,8 @@ class MIN_OUT(DCVizPlotter):
         grad_plot.axes.get_yaxis().get_label().set_fontsize(30)
         grad_plot.axes.get_xaxis().get_label().set_fontsize(30)
             
-            
 
-#==============================================================================
-# Testbed (not implemented)
-#==============================================================================
-
-def testbed(dynamic):
-    pass
     
         
 if __name__ == "__main__":
-    testbed(False)
+    print "Invalid usage: Use the DCVizWrapper for terminal usage."
