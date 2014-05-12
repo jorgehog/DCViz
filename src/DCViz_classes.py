@@ -173,15 +173,23 @@ class KMC_1D(DCVizPlotter):
         A = numpy.concatenate((A1, A2))        
         
         LX, LY = pylab.rcParams['figure.figsize']
-        LY /= 4.5
+        LY /= 5
                 
         
-        self.zFig.bar(numpy.arange(len(z)), z, linewidth = 0, width=1)
-        self.zFig.set_ylim(0, LY/LX*len(z))
+        self.zFig.bar(numpy.arange(len(z)) - 0.5, z, linewidth = 0, width=1)
+        if (LY/LX*len(z) > z.max()):
+            self.zFig.set_ylim(z.min() - 1, z.min() - 1 + LY/LX*len(z))
+        else:            
+            self.zFig.set_ybound(z.min() - 1)
+        self.zFig.set_xlim(-0.5, len(z) - 0.5)
         self.Efig.plot(E, "b*")
+        self.Efig.set_ybound(0)
         self.Rfig.plot(Rl, "b^")
         self.Rfig.plot(Rr, "r*")
+        self.Rfig.set_ybound(0)
+        self.Rfig.set_xlim([-1, len(z)])
         self.Afig.plot(A, "bo")
+        self.Afig.set_ybound(0)
       
 class concentrations(DCVizPlotter):
     
