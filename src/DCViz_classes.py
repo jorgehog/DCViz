@@ -6,6 +6,8 @@ from re import findall as find
 
 try:
     import numpy
+    import numpy as np
+    from numpy import *
 except:
     print "\n"
     print "You need numpy in order to run this library!"
@@ -27,6 +29,7 @@ try:
     
     try:
         from matplotlib import pylab
+        from matplotlib.pylab import *
     except:
         print "\nYou need matplotlib to use DCViz."
         print "sudo apt-get install python-matplotlib"
@@ -443,6 +446,8 @@ class virials(DCVizPlotter):
     
 #    figMap = {"fig" : ("subfigure", "phasefigure")}
     
+    transpose = True    
+    
     def plot(self, data):
         
         for i, _data in enumerate(data):
@@ -453,12 +458,15 @@ class virials(DCVizPlotter):
             elif int(N) == 42:
                 _data.data[:1][:] = 0
             
-            w, T, HO, COL, _ = _data
+            print _data.shape
+            w, alpha, beta, E, T, vho, vcol, r, r2, rij, err_E, err_T, err_vho, err_vcol, err_r, err_r2, err_rij = _data
         
-            if COL.sum() != COL.sum():
-                COL = 0
+            if vcol.sum() != vcol.sum():
+                vcol = 0
     
-            V = HO + COL
+            V = vho + vcol
+            
+            sigmaGAMMA = (err_T*V + T*(err_vho + err_vcol))/(err_T**2 - T**2)
             
             I = numpy.where(V > 1E-10)
             
@@ -466,13 +474,13 @@ class virials(DCVizPlotter):
             l = "N=%s" % N              
             
             print l
-            for o, E in zip(w, T+V):
-                print "%g   %g"  % (o, E)
+            for o, E, _err_E in zip(w, T+V, err_E):
+                print "%g   %g    %g"  % (o, E, _err_E)
             print "------------------------------"
             
             GAMMA = T[I]/V[I]
             
-            DGAMMA = numpy.diff(GAMMA)            
+#            DGAMMA = numpy.diff(GAMMA)            
             
             
             self.subfigure.plot(w[I], GAMMA, label=l, marker='^', linestyle="--")
@@ -564,8 +572,20 @@ class IGNIS_EVENTS(DCVizPlotter):
     
     nametag = "ignisEventsOut*"
     
+    isFamilyMember = True
     armaBin = True
 
+    def plot(self, data):
+        
+        T, N, E, t = data[0]
+        T, N, E, t2 = data[1]
+        
+        self.subfigure.plot(t[where(t!=0)], label=self.familyFileNames[0].rstrip(".arma"))
+        self.subfigure.plot(t2[where(t2!=0)], label=self.familyFileNames[1].replace("_", "-").rstrip(".arma"))
+
+        legend()
+
+"""
     figMap = {"nfig" : ["N", "T", "E"]} 
     
     stack = "V"    
@@ -607,12 +627,8 @@ class IGNIS_EVENTS(DCVizPlotter):
         self.N.set_xbound(0)
         self.N.set_ybound(0)
         self.N.set_title("T = %g" % T[-1])
-        self.T.plot(T)
-        self.T.set_title("T")
-        self.E.plot(E)
-        self.E.set_title("E")
-#"""
-    
+"""
+  
 import glob
 class molsim2(DCVizPlotter):
     
@@ -1341,11 +1357,14 @@ class MIN_OUT(DCVizPlotter):
     
     indexmap = {0: r"\alpha", 1: r"\beta"}
     l = ["-", "--"]
-    c = ['#008000', 'k']    
+    c = ['#008000', 'k']  
+    
+    transpose = True
     
     def plot(self, data):
 
         n_params = (self.Ncols - 3)/2
+
 
         E, Eavg, step = dataGenerator(data[:3])
         
