@@ -157,7 +157,20 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
         
-      
+
+class testStuff(DCVizPlotter):
+    
+    nametag = "testStuff\.arma"
+    
+    armaBin = True
+    
+    def plot(self, data):
+        
+        x, y, = data
+        
+        print x.shape, y.shape
+        self.subfigure.scatter(x, y, s = 1000)
+
       
 class KMC_1D(DCVizPlotter):
 
@@ -180,7 +193,7 @@ class KMC_1D(DCVizPlotter):
                 
         
         self.zFig.bar(numpy.arange(len(z)), z, linewidth = 0, width=1)
-        self.zFig.set_ylim(0, LY/LX*len(z))
+#        self.zFig.set_ylim(0, LY/LX*len(z))
         self.Efig.plot(E, "b*")
         self.Rfig.plot(Rl, "b^")
         self.Rfig.plot(Rr, "r*")
@@ -445,12 +458,6 @@ class virials(DCVizPlotter):
         for i, _data in enumerate(data):
             N = re.findall(self.nametag, self.familyFileNames[i])[0]
             
-            if N == "2":
-                continue
-            elif int(N) == 42:
-                _data.data[:1][:] = 0
-            
-            print _data.shape
             w, alpha, beta, E, T, vho, vcol, r, r2, rij, err_E, err_T, err_vho, err_vcol, err_r, err_r2, err_rij = _data
         
             if vcol.sum() != vcol.sum():
@@ -560,21 +567,38 @@ class mdOutCpp(DCVizPlotter):
 #        self.eventFigure.axes.set_xlim([0, _N-1])
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
+class KMC_LAMMPS(DCVizPlotter):
+    
+    nametag = "kMC\d+\.lmp"
+    
+    fileBin = True
+    
+    isFamilyMember = True
+    
+    binaryHeaderBitSizes = [4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4]
+    
+    nColsFromHeaderLoc = 11
+    
+    def plot(self, data):
+        
+        for header in self.familyHeaders:
+            print header[0]
+        
+
 class IGNIS_EVENTS(DCVizPlotter):
     
     nametag = "ignisEventsOut*"
     
-    isFamilyMember = True
     armaBin = True
 
     def plot(self, data):
         
-        T, N, E, t = data[0]
-        T, N, E, t2 = data[1]
+        T, N, E, t = data
         
-        self.subfigure.plot(t[where(t!=0)], label=self.familyFileNames[0].rstrip(".arma"))
-        self.subfigure.plot(t2[where(t2!=0)], label=self.familyFileNames[1].replace("_", "-").rstrip(".arma"))
-
+        i = where(t!=0)
+        
+        print T[0]
+        self.subfigure.plot(T[i])
         legend()
 
 """

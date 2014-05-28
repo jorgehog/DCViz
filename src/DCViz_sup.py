@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, signal, os, sys
+import re, numpy, time, signal, os, sys, struct
 
 import matplotlib.pylab as plab
 
@@ -77,6 +77,12 @@ class DCVizPlotter:
     armaBin = False
     numpyBin = False    
     fileBin = False
+    
+    binaryHeaderBitSizes = None
+    binaryHeader = None
+    nColsFromHeaderLoc = None
+    binaryHeaderTypes = None
+    defaultBinaryHeaderTypes = {4: 'i', 8: 'd'}
     
     Ncols = None
     transpose = False    
@@ -156,7 +162,7 @@ class DCVizPlotter:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
         
-        if self.Ncols is None and self.fileBin:
+        if self.Ncols is None and self.fileBin and not (self.binaryHeaderBitSizes and self.nColsFromHeaderLoc):
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
             self.Exit()
         
@@ -264,7 +270,11 @@ class DCVizPlotter:
                 
             else:
                 
-                self.familySkippedRows = [0]*N
+                self.familySkippedRows = []
+
+                if self.fileBin and self.binaryHeaderBitSizes:
+                    self.familyHeaders = []
+
                 data = [0]*N
                 self.familyFileNames = [0]*len(data)     
                 
@@ -276,7 +286,13 @@ class DCVizPlotter:
                     self.familyFileNames[i] = os.path.basename(familyMembers[i])
                     
                     data[i] = self.get_data(setUpFamily=False)
-                    self.familySkippedRows.append(self.skippedRows)
+                    
+                    if self.skipRows:
+                        self.familySkippedRows.append(self.skippedRows)
+                    
+                    if self.fileBin and self.binaryHeaderBitSizes:
+                        self.familyHeaders.append(self.binaryHeader)
+
     
 
                     
@@ -667,6 +683,23 @@ class DCVizPlotter:
         if not self.armaBin and self.skipRows is not None:        
             for i in range(self.skipRows):
                 self.skippedRows.append(self.file.readline().strip())
+
+                        
+        if self.fileBin and self.binaryHeaderBitSizes:
+            self.binaryHeader = []
+            offset = 0
+            for i, size in enumerate(self.binaryHeaderBitSizes):
+                
+                if self.binaryHeaderTypes:
+                    bintype = self.binaryHeaderTypes[i]
+                else:
+                    bintype = self.defaultBinaryHeaderTypes[size]
+                
+                self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+                offset += size
+            
+            if self.nColsFromHeaderLoc and not self.Ncols:
+                self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
               
     def saveFigs(self):
             
