@@ -568,22 +568,104 @@ class mdOutCpp(DCVizPlotter):
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
 class KMC_LAMMPS(DCVizPlotter):
+
+    #The name tag of the files to load (of course dumped by lammpswriter.h)    
+    nametag = "kMC(\d+)\.lmp"
+
+    #Specify that they are binary
+    fileBin = True    
     
-    nametag = "kMC\d+\.lmp"
-    
-    fileBin = True
-    
-    isFamilyMember = True
-    
+    #Specify the sizes of the different header components (LAMMPS)
     binaryHeaderBitSizes = [4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4]
     
+    #The number of columns in the binary data file is given as the 11'th header element
     nColsFromHeaderLoc = 11
+
+
+    #Tells DCViz to load all files in the folder matching the nametag
+    isFamilyMember = True
+    
+    #Instead of loading all family files at once, they will be loaded one by one
+    #Can also set this to loadLatest, at which the time stamp of the files will be checked
+    #and the last one will be loaded (useful for when running paralell to the simulation)
+    loadSequential = True  
+    
+    #Only reads every 10'th frame.. requested by Sigve, hence the name...
+    ziggyMagicNumber = 10 
+    
+    #Makes font sizes bigger by default (can be further customized)
+    hugifyFonts = True
+
     
     def plot(self, data):
         
-        for header in self.familyHeaders:
-            print header[0]
+        #Potential energy is stored in the 5'th column
+        potentialEnergy = data[4]
+        print potentialEnergy
         
+        #histogram shizz.. self.subfigure and self. figure
+        #is the default figure, if more is needed, use this format in the class header:
+        #figMap = {'fig1': ['sfig1', 'sfig2', ...], 'fig2': [...], ...}
+        self.subfigure.hist(potentialEnergy, bins=40, normed=True)
+        
+        self.subfigure.set_xbound(0)
+        self.subfigure.set_ylim(0, 0.4)
+                
+        self.subfigure.set_xlabel("Binding energy [E0]")
+        self.subfigure.set_ylabel("Density of States")
+        
+
+class nucleationHistograms(DCVizPlotter):
+    
+    nametag = "nucleation(\d+)\.txt"
+
+    transpose = True
+    
+    hugifyFonts = True
+    
+    transparent = True
+    
+    labelSize = 40
+    
+    def plot(self, data):
+        
+        print data.shape
+        bins, counts = data        
+        
+        db = bins[1] - bins[0]
+
+        counts /= counts.sum()*db
+        
+        self.subfigure.bar(bins - db/2, counts, width=db, linewidth=0, facecolor='r')
+        
+        self.subfigure.set_xbound(0)
+        
+        
+#        self.subfigure.set_xlabel("Binding Energy [E0]")
+#        self.subfigure.set_ylabel("Density of States")        
+
+class KMC_densities(DCVizPlotter):
+    
+    nametag = "stateDensity(\d+)\.arma"
+    
+    armaBin = True
+
+    def plot(self, data):
+        
+        r, DOS, visit = data       
+        
+        print DOS.sum(), visit.sum(), r.min(), r.max()        
+        
+        if DOS.max() != 0:        
+            DOS /= DOS.max()
+        if visit.max() != 0:
+            visit /= visit.max()
+        
+        self.subfigure.plot(r, DOS, label="DOS")
+        self.subfigure.plot(r, visit, label="visit")
+        
+        legend()
+                
 
 class IGNIS_EVENTS(DCVizPlotter):
     

@@ -92,7 +92,7 @@ class DCVizPlotter:
     familyFileNames = []
     loadLatest = False
     loadSequential = False
-    getNumberForSort = None
+    getNumberForSort = lambda _s, x : int(re.findall(_s.nametag, x)[0])
     ziggyMagicNumber = 1
     smartIncrement = True
 
@@ -113,10 +113,11 @@ class DCVizPlotter:
     
     gifLoopDelay = 0
     
+    transparent = False
  
     hugifyFonts = False
     labelSize= 20
-    fontSize = 10 #Only invoked by hugifyFonts = True
+    fontSize = 20 #Only invoked by hugifyFonts = True
     tickSize = 2
     
     fig_size = None
@@ -425,7 +426,6 @@ class DCVizPlotter:
 
         exec(s)
       
-      
     def manageFigures(self):
         if not self.useGUI:
             self.set_figures()
@@ -631,12 +631,15 @@ class DCVizPlotter:
         if self.fileBin:
             return "green"
             
-        skipRows, self.Ncols = self.sniffer(sample) 
+        self.skipRows, self.Ncols = self.sniffer(sample) 
+        
+        if (self.skipRows == 0):
+            self.skipRows = None
         
         self.file.seek(0)
         
         self.skippedRows = []
-        for i in range(skipRows):
+        for i in range(self.skipRows):
             self.skippedRows.append(self.file.readline().strip())
        
         anyNumber = self.anyNumber
@@ -666,18 +669,30 @@ class DCVizPlotter:
         #(nRows to skip = i+1, nCols = nLast)
         return i+1, nLast    
     
+    def recursiveSafeLoad(self, depth, maxDepth):
+        
+        N = 0        
+        while not os.path.exists(self.filepath) and N < 10:
+                time.sleep(0.1)
+                N += 1
+        
+        try:
+            self.file = open(self.filepath , "r")
+        except:
+            if (depth == maxDepth):
+                self.Error("Unable to load file.")
+                sys.exit(1) 
+                
+            self.recursiveSafeLoad(depth + 1, maxDepth)
+        
+    
     def reload(self):
     
         if self.file:
             if not self.file.closed: 
                 self.file.close()
 
-        N = 0        
-        while not os.path.exists(self.filepath) and N < 10:
-                time.sleep(0.1)
-                N += 1
-                        
-        self.file = open(self.filepath , "r")
+        self.recursiveSafeLoad(0, 3)
    
         self.skippedRows = []
         if not self.armaBin and self.skipRows is not None:        
@@ -716,7 +731,7 @@ class DCVizPlotter:
             
             figname = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".png"
             figpath = pjoin(dirpath, figname)
-            fig.savefig(figpath)
+            fig.savefig(figpath, transparent=self.transparent)
 
             if self.makeGif:
                 self.savedImages[i].append(figname)
@@ -730,14 +745,15 @@ class DCVizPlotter:
         rcParams['xtick.labelsize'] = self.labelSize
         rcParams['ytick.labelsize'] = self.labelSize
         
-        rcParams['ytick.major.size'] = self.labelSize
-        rcParams['ytick.major.width'] = self.tickSize
-        
-        rcParams['xtick.major.size'] = self.labelSize
-        rcParams['xtick.major.width'] = self.tickSize
+#        rcParams['ytick.major.size'] = self.tickSize
+#        rcParams['ytick.major.width'] = self.tickSize
+#        
+#        rcParams['xtick.major.size'] = self.tickSize
+#        rcParams['xtick.major.width'] = self.tickSize
         
         rcParams['axes.labelsize'] = self.labelSize
-    
+        rcParams['axes.titlesize'] = self.labelSize
+
     def add_figure(self, fig):
         self.figures.append([fig])
         self.nFig += 1
