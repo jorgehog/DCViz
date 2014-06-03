@@ -157,7 +157,39 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
         
-      
+from scipy.stats import linregress
+
+class forces1D(DCVizPlotter):
+    
+    nametag = "forces\.arma"
+    
+    armaBin = True
+    
+    figMap = {"fig" : ("subfigure", "figure")}
+    def plot(self, data):
+        
+        all_dr = linspace(0.9, 1, len(data));      
+        
+        dr = (1 - all_dr)[::-1]
+
+        data.data = data.data[::-1]
+        
+        self.subfigure.plot(dr, data.data)
+        self.subfigure.set_xlabel("compression")
+        self.subfigure.set_ylabel("wall force")
+        
+        self.figure.plot(dr, log(data.data))
+        self.figure.set_xlabel("compression")
+        self.figure.set_ylabel("log(wall force)")
+        
+        b = len(data.data)/20
+        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
+        
+        print dr[b:]
+        self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
+        pylab.legend(loc=0)
+        
+        
       
 class KMC_1D(DCVizPlotter):
 
@@ -179,11 +211,11 @@ class KMC_1D(DCVizPlotter):
         LY /= 5
                 
         
-        self.zFig.bar(numpy.arange(len(z)) - 0.5, z, linewidth = 0, width=1)
-        if (LY/LX*len(z) > z.max()):
-            self.zFig.set_ylim(z.min() - 1, z.min() - 1 + LY/LX*len(z))
-        else:            
-            self.zFig.set_ybound(z.min() - 1)
+        self.zFig.plot(z)
+#        if (LY/LX*len(z) > z.max()):
+#            self.zFig.set_ylim(z.min() - 1, z.min() - 1 + LY/LX*len(z))
+#        else:            
+#            self.zFig.set_ybound(z.min() - 1)
         self.zFig.set_xlim(-0.5, len(z) - 0.5)
         self.Efig.plot(E, "b*")
         self.Efig.set_ybound(0)
@@ -455,8 +487,8 @@ class virials(DCVizPlotter):
             
             if N == "2":
                 continue
-            elif int(N) == 42:
-                _data.data[:1][:] = 0
+            elif int(N) == 30:
+                _data.data[:15][:] = 0
             
             print _data.shape
             w, alpha, beta, E, T, vho, vcol, r, r2, rij, err_E, err_T, err_vho, err_vcol, err_r, err_r2, err_rij = _data
@@ -490,7 +522,7 @@ class virials(DCVizPlotter):
 #        self.phasefigure.plot(T[I], T[I], "k--", label="NoCoulomb")
 
         self.subfigure.legend(loc=4)
-        self.subfigure.set_xlabel("\omega")
+        self.subfigure.set_xlabel("$\omega$")
         self.subfigure.set_ylabel("T/V")
 
 #        self.phasefigure.legend()        
