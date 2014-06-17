@@ -640,6 +640,12 @@ class nucleationHistograms(DCVizPlotter):
         
         self.subfigure.set_xbound(0)
         
+        ax = self.subfigure.axes
+        
+        yticks, xticks = pylab.getp(ax, 'xticklabels'), pylab.getp(ax, 'yticklabels')
+        
+        pylab.setp(yticks, weight="extra bold")
+        pylab.setp(xticks, weight="extra bold")
         
 #        self.subfigure.set_xlabel("Binding Energy [E0]")
 #        self.subfigure.set_ylabel("Density of States")        
@@ -652,17 +658,22 @@ class KMC_densities(DCVizPlotter):
 
     def plot(self, data):
         
-        r, DOS, visit = data       
+        e, DOS, visit, idx  = data       
         
-        print DOS.sum(), visit.sum(), r.min(), r.max()        
+        print DOS.min(), visit.min(), visit.max(), visit.min()/visit.max()
+        
+#        DOS *= exp(e)
         
         if DOS.max() != 0:        
             DOS /= DOS.max()
         if visit.max() != 0:
-            visit /= visit.max()
+            visit /= 2*visit.max()
         
-        self.subfigure.plot(r, DOS, label="DOS")
-        self.subfigure.plot(r, visit, label="visit")
+        self.subfigure.plot(idx, DOS, label="DOS")
+        self.subfigure.plot(idx, visit, label="visit")
+        self.subfigure.plot([0, idx[-1]], [visit.mean(), visit.mean()], '--r')
+        self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+#        self.subfigure.set_xlim(e.min(), e.max())        
         
         legend()
                 
