@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, signal, os, sys
+import re, numpy, time, signal, os, sys, struct
 
 import matplotlib.pylab as plab
 
@@ -78,6 +78,12 @@ class DCVizPlotter:
     numpyBin = False    
     fileBin = False
     
+    binaryHeaderBitSizes = None
+    binaryHeader = None
+    nColsFromHeaderLoc = None
+    binaryHeaderTypes = None
+    defaultBinaryHeaderTypes = {4: 'i', 8: 'd'}
+    
     Ncols = None
     transpose = False    
     
@@ -86,7 +92,7 @@ class DCVizPlotter:
     familyFileNames = []
     loadLatest = False
     loadSequential = False
-    getNumberForSort = None
+    getNumberForSort = lambda _s, x : int(re.findall(_s.nametag, x)[0])
     ziggyMagicNumber = 1
     smartIncrement = True
 
@@ -107,10 +113,11 @@ class DCVizPlotter:
     
     gifLoopDelay = 0
     
+    transparent = False
  
     hugifyFonts = False
     labelSize= 20
-    fontSize = 10 #Only invoked by hugifyFonts = True
+    fontSize = 20 #Only invoked by hugifyFonts = True
     tickSize = 2
     
     fig_size = None
@@ -156,7 +163,7 @@ class DCVizPlotter:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
         
-        if self.Ncols is None and self.fileBin:
+        if self.Ncols is None and self.fileBin and not (self.binaryHeaderBitSizes and self.nColsFromHeaderLoc):
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
             self.Exit()
         
@@ -264,7 +271,11 @@ class DCVizPlotter:
                 
             else:
                 
-                self.familySkippedRows = [0]*N
+                self.familySkippedRows = []
+
+                if self.fileBin and self.binaryHeaderBitSizes:
+                    self.familyHeaders = []
+
                 data = [0]*N
                 self.familyFileNames = [0]*len(data)     
                 
@@ -276,7 +287,13 @@ class DCVizPlotter:
                     self.familyFileNames[i] = os.path.basename(familyMembers[i])
                     
                     data[i] = self.get_data(setUpFamily=False)
-                    self.familySkippedRows.append(self.skippedRows)
+                    
+                    if self.skipRows:
+                        self.familySkippedRows.append(self.skippedRows)
+                    
+                    if self.fileBin and self.binaryHeaderBitSizes:
+                        self.familyHeaders.append(self.binaryHeader)
+
     
 
                     
@@ -408,7 +425,6 @@ class DCVizPlotter:
             i += 1
 
         exec(s)
-      
       
     def manageFigures(self):
         if not self.useGUI:
@@ -615,12 +631,15 @@ class DCVizPlotter:
         if self.fileBin:
             return "green"
             
-        skipRows, self.Ncols = self.sniffer(sample) 
+        self.skipRows, self.Ncols = self.sniffer(sample) 
+        
+        if (self.skipRows == 0):
+            self.skipRows = None
         
         self.file.seek(0)
         
         self.skippedRows = []
-        for i in range(skipRows):
+        for i in range(self.skipRows):
             self.skippedRows.append(self.file.readline().strip())
        
         anyNumber = self.anyNumber
@@ -650,23 +669,52 @@ class DCVizPlotter:
         #(nRows to skip = i+1, nCols = nLast)
         return i+1, nLast    
     
+    def recursiveSafeLoad(self, depth, maxDepth):
+        
+        N = 0        
+        while not os.path.exists(self.filepath) and N < 10:
+                time.sleep(0.1)
+                N += 1
+        
+        try:
+            self.file = open(self.filepath , "r")
+        except:
+            if (depth == maxDepth):
+                self.Error("Unable to load file.")
+                sys.exit(1) 
+                
+            self.recursiveSafeLoad(depth + 1, maxDepth)
+        
+    
     def reload(self):
     
         if self.file:
             if not self.file.closed: 
                 self.file.close()
 
-        N = 0        
-        while not os.path.exists(self.filepath) and N < 10:
-                time.sleep(0.1)
-                N += 1
-                        
-        self.file = open(self.filepath , "r")
+        self.recursiveSafeLoad(0, 3)
    
         self.skippedRows = []
         if not self.armaBin and self.skipRows is not None:        
             for i in range(self.skipRows):
                 self.skippedRows.append(self.file.readline().strip())
+
+                        
+        if self.fileBin and self.binaryHeaderBitSizes:
+            self.binaryHeader = []
+            offset = 0
+            for i, size in enumerate(self.binaryHeaderBitSizes):
+                
+                if self.binaryHeaderTypes:
+                    bintype = self.binaryHeaderTypes[i]
+                else:
+                    bintype = self.defaultBinaryHeaderTypes[size]
+                
+                self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+                offset += size
+            
+            if self.nColsFromHeaderLoc and not self.Ncols:
+                self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
               
     def saveFigs(self):
             
@@ -683,7 +731,7 @@ class DCVizPlotter:
             
             figname = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".png"
             figpath = pjoin(dirpath, figname)
-            fig.savefig(figpath)
+            fig.savefig(figpath, transparent=self.transparent)
 
             if self.makeGif:
                 self.savedImages[i].append(figname)
@@ -697,14 +745,15 @@ class DCVizPlotter:
         rcParams['xtick.labelsize'] = self.labelSize
         rcParams['ytick.labelsize'] = self.labelSize
         
-        rcParams['ytick.major.size'] = self.labelSize
-        rcParams['ytick.major.width'] = self.tickSize
-        
-        rcParams['xtick.major.size'] = self.labelSize
-        rcParams['xtick.major.width'] = self.tickSize
+#        rcParams['ytick.major.size'] = self.tickSize
+#        rcParams['ytick.major.width'] = self.tickSize
+#        
+#        rcParams['xtick.major.size'] = self.tickSize
+#        rcParams['xtick.major.width'] = self.tickSize
         
         rcParams['axes.labelsize'] = self.labelSize
-    
+        rcParams['axes.titlesize'] = self.labelSize
+
     def add_figure(self, fig):
         self.figures.append([fig])
         self.nFig += 1

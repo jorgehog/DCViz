@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import os, sys, inspect, re, threading
+import os, sys, inspect, re, threading, time
 from os.path import join as pjoin
 
 #Adding the srcDir to the local pythonpath in order to avoid global pythonpath sets
@@ -60,6 +60,13 @@ def matchMode(modes, path, noWarnings=False, silent=False):
 
 def getInstance(path, dynamic=False, toFile=False, threaded=False):
     
+    if dynamic:
+        
+        N = 0        
+        while not os.path.exists(path) and N < 10:
+                time.sleep(0.1)
+                N += 1
+                
     if not os.path.exists(path):
         terminalTracker("Warning", "No such file: " + path)
         return
