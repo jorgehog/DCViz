@@ -362,7 +362,14 @@ class DCVizPlotter:
 
         dims = tuple([int(d) for d in armaFile.readline().strip().split()])
         
-        data = numpy.fromfile(armaFile, dtype=numpy.float64).transpose()
+        if "IS004" in armaFormat:
+            dtype = numpy.int32
+        else:
+            dtype = numpy.float64
+        
+        
+        
+        data = numpy.fromfile(armaFile, dtype=dtype).transpose()
 
         if len(dims) == 2:
 

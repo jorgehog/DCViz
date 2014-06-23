@@ -189,6 +189,16 @@ class forces1D(DCVizPlotter):
         self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
         pylab.legend(loc=0)
         
+class heighMap(DCVizPlotter):
+
+    nametag = "heighmap\.arma"
+    
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)        
+        
         
 class testStuff(DCVizPlotter):
     
