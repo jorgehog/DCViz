@@ -191,6 +191,17 @@ try:
             pylab.legend(loc=0)
 except:
     pass        
+
+class heighMap(DCVizPlotter):
+
+    nametag = "heighmap\.arma"
+    
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)        
+        
         
 class testStuff(DCVizPlotter):
     
