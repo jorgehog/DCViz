@@ -95,6 +95,7 @@ class DCVizPlotter:
     getNumberForSort = lambda _s, x : int(re.findall(_s.nametag, x)[0])
     ziggyMagicNumber = 1
     smartIncrement = True
+    originalFilename = None
 
 
     skippedRows = []
@@ -500,10 +501,12 @@ class DCVizPlotter:
         time.sleep(self.delay - int(self.delay))
 
     def initFamily(self):
+
+        self.originalFilename = os.path.split(self.filepath)[-1]
         
         if self.isFamilyMember and self.loadSequential and self.smartIncrement and self.getNumberForSort:
         
-            familyMembers = self.get_family()
+            familyMembers = self.get_family()            
             
             if self.getNumberForSort:
                 familyMembers = sorted(familyMembers, key=self.getNumberForSort)
@@ -636,15 +639,15 @@ class DCVizPlotter:
         if (self.skipRows == 0):
             self.skipRows = None
         
-        self.file.seek(0)
-        
-        self.skippedRows = []
-        for i in range(self.skipRows):
-            self.skippedRows.append(self.file.readline().strip())
-       
-        anyNumber = self.anyNumber
-        #self.rx = re.compile(r'\s*.+?'*self.skipCols + (r'\s*(%s)\s+' % anyNumber)*(self.Ncols - self.skipCols-1) + r'(%s)\s*[\n$]' % anyNumber)    
-        
+        self.file.seek(0)        
+
+        if self.skipRows:
+            
+            self.skippedRows = []
+            for i in range(self.skipRows):
+                self.skippedRows.append(self.file.readline().strip())
+      
+      
         return "green"
         
     

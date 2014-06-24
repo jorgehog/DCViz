@@ -156,39 +156,41 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.subfigure.axes.set_xlabel("R")
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
-        
-from scipy.stats import linregress
 
-class forces1D(DCVizPlotter):
+try:
+    from scipy.stats import linregress
     
-    nametag = "forces\.arma"
+    class forces1D(DCVizPlotter):
+        
+        nametag = "forces\.arma"
+        
+        armaBin = True
+        
+        figMap = {"fig" : ("subfigure", "figure")}
+        def plot(self, data):
+            
+            all_dr = linspace(0.9, 1, len(data));      
+            
+            dr = (1 - all_dr)[::-1]
     
-    armaBin = True
-    
-    figMap = {"fig" : ("subfigure", "figure")}
-    def plot(self, data):
-        
-        all_dr = linspace(0.9, 1, len(data));      
-        
-        dr = (1 - all_dr)[::-1]
-
-        data.data = data.data[::-1]
-        
-        self.subfigure.plot(dr, data.data)
-        self.subfigure.set_xlabel("compression")
-        self.subfigure.set_ylabel("wall force")
-        
-        self.figure.plot(dr, log(data.data))
-        self.figure.set_xlabel("compression")
-        self.figure.set_ylabel("log(wall force)")
-        
-        b = len(data.data)/20
-        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
-        
-        print dr[b:]
-        self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
-        pylab.legend(loc=0)
-        
+            data.data = data.data[::-1]
+            
+            self.subfigure.plot(dr, data.data)
+            self.subfigure.set_xlabel("compression")
+            self.subfigure.set_ylabel("wall force")
+            
+            self.figure.plot(dr, log(data.data))
+            self.figure.set_xlabel("compression")
+            self.figure.set_ylabel("log(wall force)")
+            
+            b = len(data.data)/20
+            slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
+            
+            print dr[b:]
+            self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
+            pylab.legend(loc=0)
+except:
+    pass        
         
 class testStuff(DCVizPlotter):
     
@@ -900,10 +902,12 @@ class EnergyTrail(DCVizPlotter):
 
 class Blocking(DCVizPlotter):
     
-    nametag = "blocking_\w+_out\d*\.dat"
+    nametag = "blocking_\w+_out.*?\d*\.dat"
     figMap = {"Fig": ["blockFig"]}
     
     nameMap = {"0": r"$\alpha$", "1": r"$\beta$", "": ""}
+    
+    transpose = True    
     
     def plot(self, data):
         
@@ -932,12 +936,14 @@ class Blocking(DCVizPlotter):
 
 class DMC_OUT(DCVizPlotter):
     
-    nametag = "DMC_out\.dat"
+    nametag = "DMC_out.*\.dat"
     figMap = {"Fig": ["N_plot"], "Fig2": ["E_plot"]}
     dt = 0.001
         
-        
+    transpose = True
+    
     def plot(self, data):
+        print data.data.shape
         
         E, Eavg, N, Navg, ET = data
         
@@ -980,134 +986,60 @@ class radial_out(DCVizPlotter):
     isFamilyMember=True
     familyName = "radial dist"
     
+    cut = 4
+    yMax = None
+    silent = False
+    
+    color = ['#008000', "0.75", "k"]
+    style = ['-', '-.', '--']
+
+    pureOnly = False
+
     def plot(self, data):
-        cut=4
-        xScale = 1
         
-        piFac = 2*3.141592;
-        for d in data:
-            d.data *= piFac
-   
-        silent = True
-        
-        color = ['#008000', "0.5", "k", '#008000']
-        style = ['-', '-.', '--', '.']
-        max_edge = 0   
-        maxCut = 0
-        j = 0
-        
-        path, name = os.path.split(self.filepath)
-        
-        try:
-            yFile = open(os.path.join(path, "yMIN.dat"), 'r')
-            yMax = float(yFile.read())
-            print yMax
-        except:
-            yMax = None
-        
-        vmc=None
-        dmc=None
-        
-        pureOnly = False
-        superPose = False  
-        dmcEdge = None
-        vmcEdge = None
         
         r2 = False
         if "Atoms" in self.familyFileNames[0]:
             r2 = True
-        
-        if superPose:
-            yMax = 1.2
 
-        for i in range(len(data)):
-            
-            if superPose:
-                edge = 1
-            else:
-                edge = float(re.findall("edge(\d+\.?\d*)\.arma", self.familyFileNames[i])[0])
-                if not silent: print "n_p= ", data[i].data.sum()*edge/(data[i].n-1), "?"
-            
-            if edge > max_edge:
-                max_edge = edge;
-            
-            if "dmc" in self.familyFileNames[i]:
-                method = "dmc"
-                dmc = data[i].data
-                
-                dmcEdge = edge;
+        if len(self.familyFileNames) == 1:
+            maxCut, max_edge = self.plotsingle(data, 0)
+        else:
 
-                if superPose:
-                    dmc = dmc/dmc[cut:].max()
-                
-                last = dmc
-                
-            elif "vmc" in self.familyFileNames[i]:
-                method = "vmc"
-                vmc = data[i].data
-                vmcEdge = edge
-                
-          
-                if superPose:
-                    vmc = vmc/vmc[cut:].max()
-     
-                last = vmc
-                
-                
-            r = numpy.linspace(0, edge, data[i].n)
+            root_id = re.findall("radial\_out\_(.*)\_edge", self.originalFilename)[0].replace("dmc", "qmc").replace("vmc", "qmc")
             
-            if r[cut] > maxCut:
-                maxCut = r[cut]            
-            
-            if not pureOnly:
-                if "QDots3D" in self.familyFileNames[i] or "Diatom" in self.familyFileNames[i]:
-                    r.resize((data[i].n, 1))
-                    last[1:] /= r[1:]**2
-                    last[0] = last[1]
-                    
-                    if "vmc" in self.familyFileNames[i]:
-                        vmc = last
+            k = None        
+            o = None
+            for i, name in enumerate(self.familyFileNames):
+
+                if name == self.originalFilename:
+                    o = i
+                    if k is not None:
+                        break
                     else:
-                        dmc = last
-           
-                self.radialFig.plot(r, last, style[i%2], label=method.upper(), color=color[i%2]);
-           
-            if vmc is not None and dmc is not None:
-                if vmcEdge != dmcEdge:
-                    print "Warning. Ploting pure dist for mismatching edges. %f != %f" % (vmcEdge, dmcEdge)
-                else:
-                    print "Pure success"
-                    
-                if pureOnly:
-                    pureC = color[j%len(color)]
-                    pureS = style[j%len(color)]
-                    j += 1
-                    pLabel=None
-
-                    if superPose:
-                        pLabel = re.findall("out_(.+?)[vd]mc", self.familyFileNames[i])[0]
-                        pLabel = re.sub("(\d)c(\d)", "\g<1> \g<2>", pLabel)
-                        pLabel = re.sub("QDots\d+", "", pLabel)
-                    
-                else:
-                    pureC = 'k'
-                    pureS = "--"
-                    pLabel= "Pure"
-                    
-                pure = 2*dmc - vmc
-
-                if superPose:
-                    pure = pure/pure[cut:].max()
+                        continue
+            
+                _id = re.findall("radial\_out\_(.*)\_edge", name)[0].replace("dmc", "qmc").replace("vmc", "qmc")
                 
-                self.radialFig.plot(r, pure, pureS, color=pureC, label=pLabel)
-                vmc = None
-                dmc = None
-           
-        
-#        if not pureOnly:
+                if (_id == root_id and k is None):
+                    k = i
+                    if o is not None:
+                        break
+                
+    
+            if k is None:
+                if not self.silent: print "No matching ids found."
+                
+                maxCut, max_edge = self.plotsingle(data, o)                
+                
+            else:
+                if not self.silent: print self.familyFileNames[o], self.familyFileNames[k]
+                
+                maxCut, max_edge = self.plotdouble(data, o, k)
+               
+            
         self.radialFig.legend()    
-        self.radialFig.axes.set_xlim(maxCut, xScale*max_edge)
-#        self.radialFig.axes.set_xlim(maxCut, 5)
+        self.radialFig.axes.set_xlim(maxCut, max_edge)
         self.radialFig.set_xlabel('r')
         
         if r2:
@@ -1115,14 +1047,72 @@ class radial_out(DCVizPlotter):
         else:
             self.radialFig.set_ylabel(r'$\rho(r)$')
 
-#        locator = self.radialFig.axes.get_yaxis().get_major_locator()
-#        self.radialFig.axes.set_ylim(locator.autoscale()/2)
-        if yMax is not None:
+        if self.yMax is not None:
             self.radialFig.set_ylim(0, yMax)
         self.radialFig.axes.set_ybound(0)
         
         self.radialFig.axes.get_yaxis().get_label().set_fontsize(30)
         self.radialFig.axes.get_xaxis().get_label().set_fontsize(30)
+
+    def getEdge(self, n):
+        return float(re.findall("edge(\d+\.?\d*)\.arma", self.familyFileNames[n])[0])
+          
+    def plotdouble(self, data, o, k):
+        
+        cuts = []
+        edges = []
+        
+        if not self.pureOnly:
+            cut0, edge0 = self.plotsingle(data, o)
+            cut1, edge1 = self.plotsingle(data, k, 1)
+            
+            cuts.append(cut0)
+            cuts.append(cut1)
+            
+            edges.append(edge0)
+            edges.append(edge1)
+            
+        if "vmc" in self.familyFileNames[o] and "dmc" in self.familyFileNames[k]:
+            vmcDist = data[o].data
+            dmcDist = data[k].data
+        elif "vmc" in self.familyFileNames[k] and "dmc" in self.familyFileNames[o]:
+            vmcDist = data[k].data
+            dmcDist = data[o].data
+        else:
+            raise RuntimeError("Matching distribution sets are not vmc dmc pairs.")
+      
+        dist = 2*dmcDist - vmcDist
+        
+        edge = self.getEdge(o)
+        
+        r = linspace(0, edge, data[o].n)
+        
+        self.radialFig.plot(r, dist, self.style[2], color=self.color[2], label="Pure")
+        
+        cuts.append(r[self.cut])
+        edges.append(edge)
+                
+        
+        return max(cuts), max(edges)        
+        
+    def plotsingle(self, data, n, i = 0):
+        edge = self.getEdge(n)
+        
+        r = linspace(0, edge, data[n].n)
+
+        if "vmc" in self.familyFileNames[n]:
+            label = "VMC"
+        else:
+            label = "DMC"
+            
+        self.radialFig.plot(r, data[n].data, self.style[i], color=self.color[i], label=label)
+
+
+        if not self.silent: print self.familyFileNames[n]
+        if not self.silent: print "n_p= ", data[n].data.sum()*edge/(data[n].n-1), "?"
+            
+        
+        return r[self.cut], edge
         
         
 
@@ -1144,47 +1134,74 @@ class dist_out(DCVizPlotter):
         
     def plot(self, data):
     
-        silent = False
-          
-        edge = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[0])[0])    
+        silent = False    
     
         if len(data) == 1:
             if not silent: print "length 1 data"
-            dist = data[0].data
-        elif len(data) == 2:
-            if not silent: print "len2 data"
-            edge_2 = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[1])[0])
-        
-            if not silent:
-                if edge != edge_2:
-                    print "Bin edges does not match. %s != %s" % (edge, edge_2)
-
-            for i in range(2):
-                if "vmc" in self.familyFileNames[i]:
-                    vmcDist = data[i].data
-                elif "dmc" in self.familyFileNames[i]:
-                    dmcDist = data[i].data
             
-        
-            if self.dmcOnly:
-                try:
-                    dist = dmcDist
-                except: 
-                    if not silent: print "\n\nWarning: No DMC data found. Attempting to load VMC data.\n\n"
-                   
+            edge = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[0])[0])
+            dist = data[0].data
+            
+        else:
+
+            root_id = re.findall("dist\_out\_(.*)\_edge", self.originalFilename)[0].replace("dmc", "qmc").replace("vmc", "qmc")
+            
+            k = None        
+            o = None
+            for i, name in enumerate(self.familyFileNames):
+
+                if name == self.originalFilename:
+                    o = i
+                    if k is not None:
+                        break
+                    else:
+                        continue
+            
+                _id = re.findall("dist\_out\_(.*)\_edge", name)[0].replace("dmc", "qmc").replace("vmc", "qmc")
+                
+                if (_id == root_id and k is None):
+                    k = i
+                    if o is not None:
+                        break
+            
+
+            edge = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[o])[0])            
+            
+            if k is not None:
+                if not silent: print self.familyFileNames[o], self.familyFileNames[k]
+                edge_2 = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[k])[0])
+            
+                if not silent:
+                    if edge != edge_2:
+                        print "Bin edges does not match. %s != %s" % (edge, edge_2)
+    
+                if "vmc" in self.familyFileNames[o] and "dmc" in self.familyFileNames[k]:
+                    vmcDist = data[o].data
+                    dmcDist = data[k].data
+                elif "vmc" in self.familyFileNames[k] and "dmc" in self.familyFileNames[o]:
+                    vmcDist = data[k].data
+                    dmcDist = data[o].data
+                else:
+                    raise RuntimeError("Matching distribution sets are not vmc dmc pairs.")
+                
+                if self.dmcOnly:
+                    try:
+                        dist = dmcDist
+                    except: 
+                        if not silent: print "\n\nWarning: No DMC data found. Attempting to load VMC data.\n\n"
+                       
+                        dist = vmcDist
+                       
+                elif self.vmcOnly:
                     dist = vmcDist
-                   
-            elif self.vmcOnly:
-                dist = vmcDist
-            else:
-                try:
+                else:
                     dist = 2*dmcDist - vmcDist
                     print "pure success!", dmcDist.sum()*(edge/100)**2, vmcDist.sum()*(edge/100)**2 
-                except:
-                    raise Exception("Supplied dist files does not match a VMC+DMC pair:  \n%s \n%s" % (self.familyFileNames[0], self.familyFileNames[1]))
-        else:
-            raise Exception("More than two distributions loaded in given folder")
-        
+            
+            else:
+                if not silent: print "length 1 data"
+                
+                dist = data[o].data
         
         origLen = len(dist)
         distMid = dist[:, origLen/2]
@@ -1496,7 +1513,7 @@ class testBinFile(DCVizPlotter):
         
 class MIN_OUT(DCVizPlotter):
     
-    nametag = "ASGD_out\.dat"
+    nametag = "ASGD_out.*\.dat"
     figMap = {"E_fig"    : ["E_plot"], 
               "step_fig" : ["step_plot"],
               "param_fig": ["param_plot", "grad_plot"]}
