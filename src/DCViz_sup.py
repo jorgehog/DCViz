@@ -78,6 +78,10 @@ class DCVizPlotter:
     numpyBin = False    
     fileBin = False
     
+    path = None
+    filename = None
+    filepath = None
+    
     binaryHeaderBitSizes = None
     binaryHeader = None
     nColsFromHeaderLoc = None
@@ -90,6 +94,7 @@ class DCVizPlotter:
     isFamilyMember = False
     familyName = "unnamed"
     familyFileNames = []
+    familyHome = None
     loadLatest = False
     loadSequential = False
     getNumberForSort = lambda _s, x : int(re.findall(_s.nametag, x)[0])
@@ -192,7 +197,7 @@ class DCVizPlotter:
         if not familyHome:
             self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
             self.Exit()
-            
+        
         familyNames = [name for name in os.listdir(familyHome)\
                         if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
        
@@ -697,7 +702,9 @@ class DCVizPlotter:
         
     
     def reload(self):
-    
+
+        self.path, self.filename = os.path.split(self.filepath)
+        
         if self.file:
             if not self.file.closed: 
                 self.file.close()

@@ -498,7 +498,7 @@ class virials(DCVizPlotter):
     
     isFamilyMember = True
     
-#    figMap = {"fig" : ("subfigure", "phasefigure")}
+    figMap = {"fig" : ("bohrfigure"), "fig2": "rfigure", "fig3": "rrelfigure"}
     
     transpose = True    
     
@@ -507,46 +507,38 @@ class virials(DCVizPlotter):
         for i, _data in enumerate(data):
             N = re.findall(self.nametag, self.familyFileNames[i])[0]
             
-
-            w, alpha, beta, E, T, vho, vcol, r, r2, rij, err_E, err_T, err_vho, err_vcol, err_r, err_r2, err_rij = _data
+            w, alpha, beta, E_v, T_v, vho_v, vcol_v, r_v, rij_v, E_d, T_d, vho_d, vcol_d, r_d, rij_d = _data
         
-            if vcol.sum() != vcol.sum():
-                vcol = 0
-    
-            V = vho + vcol
+            V_v = vho_v + vcol_v
+            V_d = vho_d + vcol_d
             
-            sigmaGAMMA = (err_T*V + T*(err_vho + err_vcol))/(err_T**2 - T**2)
-            
-            I = numpy.where(V > 1E-10)
-            
-
             l = "N=%s" % N              
             
             print l
-            for o, E, _err_E in zip(w, T+V, err_E):
-                print "%g   %g    %g"  % (o, E, _err_E)
+            for o, E in zip(w, T_d+V_d):
+                print "%g   %g"  % (o, E)
             print "------------------------------"
             
-            GAMMA = T[I]/V[I]
-            
-#            DGAMMA = numpy.diff(GAMMA)            
-            
-            
-            self.subfigure.plot(w[I], GAMMA, label=l, marker='^', linestyle="--")
-#            self.phasefigure.plot(w[I][:-1], DGAMMA, label=l, marker='^', linestyle="--")            
-            
-            
-#        self.phasefigure.plot(T[I], T[I], "k--", label="NoCoulomb")
+            GAMMA_v = T_v/V_v
+            GAMMA_d = T_d/V_d
+                       
+            self.bohrfigure.plot(w, GAMMA_d, label=l + "dmc", marker='^', linestyle="--")
+            self.bohrfigure.plot(w, GAMMA_v, label=l + "vmc", marker='^', linestyle="--")
+            self.rfigure.plot(w, r_d/r_d.max(), "--^", color="k", label="r/%g" % r_d.max())
+            self.rfigure.plot(w, rij_d/rij_d.max(), "-*", color="r", label="rij/%g" % rij_d.max())
 
-        self.subfigure.legend(loc=4)
-        self.subfigure.set_xlabel("$\omega$")
-        self.subfigure.set_ylabel("T/V")
+        self.bohrfigure.legend(loc=4)
+        self.bohrfigure.set_xlabel("$\omega$")
+        self.bohrfigure.set_ylabel("T/V")
 
-#        self.phasefigure.legend()        
-#        self.phasefigure.set_ylabel("D(T/V)/Dw")
-#        self.phasefigure.set_xlabel("w")
-                
+        self.rfigure.legend(loc=1)
+        self.rfigure.set_xlabel("$\omega$")
+        self.rfigure.set_ylabel("r")
+        
+        self.rrelfigure.set_xlabel("$\omega$")                
+        self.rrelfigure.set_ylabel("r_rel")
 
+        
 class mdOutCpp(DCVizPlotter):
     
     nametag = "ignisPos\d+?\.arma"
@@ -710,7 +702,9 @@ class KMC_densities(DCVizPlotter):
         
         e, DOS, visit, idx  = data       
         
-        print DOS.min(), visit.min(), visit.max(), visit.min()/visit.max()
+        f = open(os.path.join(self.path, 'flatness.txt'), 'r')
+        l, u = [int(x) for x in f.read().split()]
+        f.close()
         
 #        DOS *= exp(e)
         
@@ -718,11 +712,13 @@ class KMC_densities(DCVizPlotter):
             DOS /= DOS.max()
         if visit.max() != 0:
             visit /= 2*visit.max()
+
+        m = visit[l:u].mean()
         
         self.subfigure.plot(idx, DOS, label="DOS")
         self.subfigure.plot(idx, visit, label="visit")
-        self.subfigure.plot([0, idx[-1]], [visit.mean(), visit.mean()], '--r')
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+        self.subfigure.plot([u, l], [m, m], 'r--*')
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
         legend()
@@ -913,7 +909,7 @@ class EnergyTrail(DCVizPlotter):
 
 class Blocking(DCVizPlotter):
     
-    nametag = "blocking_\w+_out.*?\d*\.dat"
+    nametag = "blocking_.*?\.dat"
     figMap = {"Fig": ["blockFig"]}
     
     nameMap = {"0": r"$\alpha$", "1": r"$\beta$", "": ""}
