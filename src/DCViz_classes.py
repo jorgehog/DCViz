@@ -698,13 +698,27 @@ class KMC_densities(DCVizPlotter):
     
     armaBin = True
 
+    def mapIndex(self, indices, index):
+        hits = where(indices == index)[0]
+
+        if len(hits) == 0:
+    
+            minError = 100000000;
+            winner = None
+            
+            for i, idx in enumerate(indices):
+                
+                if abs(idx - index) < minError:
+                    minError = abs(idx - index)
+                    winner = i
+                
+            return winner        
+        
+        return hits[0];
+
     def plot(self, data):
         
         e, DOS, visit, idx  = data       
-        
-        f = open(os.path.join(self.path, 'flatness.txt'), 'r')
-        l, u = [int(x) for x in f.read().split()]
-        f.close()
         
 #        DOS *= exp(e)
         
@@ -712,13 +726,44 @@ class KMC_densities(DCVizPlotter):
             DOS /= DOS.max()
         if visit.max() != 0:
             visit /= 2*visit.max()
-
-        m = visit[l:u].mean()
         
         self.subfigure.plot(idx, DOS, label="DOS")
         self.subfigure.plot(idx, visit, label="visit")
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
-        self.subfigure.plot([u, l], [m, m], 'r--*')
+
+        with open(os.path.join(self.path, 'flatness.txt'), 'r') as f:
+
+            for line in f:
+
+                l, u = [int(x) for x in line.split()]
+
+                l = self.mapIndex(idx, l)
+                u = self.mapIndex(idx, u-1) + 1
+                
+                m = visit[l:u].mean()
+
+                                   
+                self.subfigure.plot([idx[l], idx[u-1]], [m, m], 'g--*')
+                
+
+        with open(os.path.join(self.path, 'roughness.txt'), 'r') as f:
+
+            for line in f:
+
+                l, u = [int(x) for x in line.split()]
+
+                print l, u, idx
+
+                l = self.mapIndex(idx, l)
+                u = self.mapIndex(idx, u - 1) + 1
+                
+                print l, u
+                
+                m = visit[l:u].mean()
+
+                                   
+                self.subfigure.plot([idx[l], idx[u-1]], [m, m], 'r--*')                
+                
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
         legend()
