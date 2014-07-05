@@ -740,10 +740,12 @@ class KMC_densities(DCVizPlotter):
                 l = self.mapIndex(idx, l)
                 u = self.mapIndex(idx, u-1) + 1
                 
+                l = idx[l]
+                u = idx[u-1] + 1
+                
                 m = visit[l:u].mean()
 
-                                   
-                self.subfigure.plot([idx[l], idx[u-1]], [m, m], 'g--*')
+                self.subfigure.plot([l, u-1], [m, m], 'g--*')
                 
 
         with open(os.path.join(self.path, 'roughness.txt'), 'r') as f:
@@ -752,17 +754,15 @@ class KMC_densities(DCVizPlotter):
 
                 l, u = [int(x) for x in line.split()]
 
-                print l, u, idx
-
                 l = self.mapIndex(idx, l)
                 u = self.mapIndex(idx, u - 1) + 1
                 
-                print l, u
+                l = idx[l]
+                u = idx[u-1] + 1
                 
                 m = visit[l:u].mean()
 
-                                   
-                self.subfigure.plot([idx[l], idx[u-1]], [m, m], 'r--*')                
+                self.subfigure.plot([l, u-1], [m, m], 'r--*')                
                 
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
