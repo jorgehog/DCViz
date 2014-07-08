@@ -692,6 +692,16 @@ class nucleationHistograms(DCVizPlotter):
 #        self.subfigure.set_xlabel("Binding Energy [E0]")
 #        self.subfigure.set_ylabel("Density of States")        
 
+class quick_hist(DCVizPlotter):
+    
+    nametag = "hist\.arma"    
+    
+    armaBin = True
+    
+    def plot(self, data):
+        
+        self.subfigure.plot(data.data)
+
 class KMC_densities(DCVizPlotter):
     
     nametag = "stateDensity(\d+)\.arma"
@@ -720,16 +730,19 @@ class KMC_densities(DCVizPlotter):
         
         e, DOS, visit, idx  = data       
         
-#        DOS *= exp(e)
+        
+#        DOS *= exp(e/32)
         
         if DOS.max() != 0:        
             DOS /= DOS.max()
         if visit.max() != 0:
             visit /= 2*visit.max()
+            
         
         self.subfigure.plot(idx, DOS, label="DOS")
         self.subfigure.plot(idx, visit, label="visit")
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+
 
         try:
             with open(os.path.join(self.path, 'flatness.txt'), 'r') as f:
