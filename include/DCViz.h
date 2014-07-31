@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Python.h>
 #include <thread>
 #include <sstream>
