@@ -737,8 +737,6 @@ class KMC_densities(DCVizPlotter):
             DOS /= DOS.max()
         if visit.max() != 0:
             visit /= 2*visit.max()
-
-        print DOS            
         
         self.subfigure.plot(idx, DOS, label="DOS")
         self.subfigure.plot(idx, visit, label="visit")
