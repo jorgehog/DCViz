@@ -702,7 +702,7 @@ class quick_hist(DCVizPlotter):
         
         self.subfigure.plot(data.data)
 
-class KMC_densities(DCVizPlotter):
+class WLMC_densities(DCVizPlotter):
     
     nametag = "stateDensity(\d+)\.arma"
     
@@ -738,8 +738,6 @@ class KMC_densities(DCVizPlotter):
         if visit.max() != 0:
             visit /= 2*visit.max()
 
-        print DOS            
-        
         self.subfigure.plot(idx, DOS, label="DOS")
         self.subfigure.plot(idx, visit, label="visit")
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
@@ -1451,7 +1449,20 @@ class Scaling(DCVizPlotter):
         self.fig4.legend(loc=2)
         self.fig4.set_ylabel("t[s]")
         self.fig4.set_xlabel("N")
+
+class HeatCap(DCVizPlotter):
+    
+    nametag = "CT\.arma"
+    armaBin = True    
+    
+    def plot(self, data):
         
+        C, T = data        
+        
+        self.subfigure.plot(T, C)
+        self.subfigure.set_ybound(0)
+        self.subfigure.set_ylabel("C(T)")
+        self.subfigure.set_xlabel("T")
         
 class E_vs_w(DCVizPlotter):
     
