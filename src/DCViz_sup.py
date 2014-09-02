@@ -92,7 +92,7 @@ class DCVizPlotter:
     transpose = False    
     
     isFamilyMember = False
-    familyName = "unnamed"
+    familyName = None
     familyFileNames = []
     familyHome = None
     loadLatest = False
@@ -137,7 +137,10 @@ class DCVizPlotter:
 
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
-        
+
+        if not self.familyName:
+            self.familyName = self.__class__.__name__
+
         if not self.nametag:
             raise RuntimeError("An instance of DCViz must have a specified nametag.")
         
@@ -367,7 +370,7 @@ class DCVizPlotter:
         armaFormat =  armaFile.readline()
 
         dims = tuple([int(d) for d in armaFile.readline().strip().split()])
-        
+      
         if "IS004" in armaFormat:
             dtype = numpy.int32
         else:
@@ -547,11 +550,11 @@ class DCVizPlotter:
         self.manageFigures()
         self.initFamily()
 
-        while (self.shouldReplot()):
+        while self.shouldReplot():
 
             self.clear()
            
-            data = self.get_data(setUpFamily = self.isFamilyMember)
+            data = self.get_data(setUpFamily=self.isFamilyMember)
 
             self.plot(data)  
             self.showFigures()

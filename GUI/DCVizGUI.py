@@ -365,7 +365,14 @@ class DCVizGUI(QMainWindow):
         self.updateModeSelector()
         
     def detectModetype(self, filename):
-  
+
+        strippedFilename = os.path.split(filename)[-1]
+
+        if ".arma.tmp_" in strippedFilename or strippedFilename.startswith(".tmp_"):
+
+            self.terminalTracker("Detector", "arma temp file %s ignored." % strippedFilename.split(".tmp_")[-1])
+            return
+
         s = 15
         for mode in self.uniqueModes:
             if re.findall(mode.nametag, filename):
@@ -381,13 +388,13 @@ class DCVizGUI(QMainWindow):
         
                 
                 self.terminalTracker("Detector", "matched [%s] with [%s]" %  \
-                          (os.path.split(filename)[-1].center(s), \
+                          (strippedFilename.center(s), \
                             self.uniqueModesNames[self.uniqueModes.index(mode)].center(s)))
                 
                 self.modeMap[str(modeInstance)] = modeInstance
                 return
                 
-        self.terminalTracker("Detector", "'%s' does not match any DCViz class" % os.path.split(filename)[-1])
+        self.terminalTracker("Detector", "'%s' does not match any DCViz class" % strippedFilename)
 
     def checkConsistency(self, modeInstance):
         return str(modeInstance) in self.modeMap.keys()

@@ -126,8 +126,12 @@ def mainToFile(path):
             
             
             plotTool = matchedMode(pjoin(root, outfile), toFile=True)
-            plotTool.mainloop()
-            
+
+            try:
+                plotTool.mainloop()
+            except:
+                terminalTracker("DCViz", "Unable to save %s to file: Crash!" % outfile)
+
 
 class DCVizThread(threading.Thread):
     

@@ -692,6 +692,21 @@ class nucleationHistograms(DCVizPlotter):
 #        self.subfigure.set_xlabel("Binding Energy [E0]")
 #        self.subfigure.set_ylabel("Density of States")        
 
+class quick_conc(DCVizPlotter):
+
+    nametag = "conc(\d+).arma"
+
+    #isFamilyMember = True
+
+    #loadLatest = True
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)
+        self.subfigure.set_ybound(data.data.max()/2)
+
 class quick_hist(DCVizPlotter):
     
     nametag = "hist\.arma"    
@@ -701,6 +716,24 @@ class quick_hist(DCVizPlotter):
     def plot(self, data):
         
         self.subfigure.plot(data.data)
+
+class WLMC_C(DCVizPlotter):
+
+    nametag = "wl(\d+)\.dat"
+    isFamilyMember = True
+    loadSequential = True
+
+
+
+    transpose = True
+
+    def plot(self, data):
+
+        print data.shape
+        bin, E, Eavg, H, lng = data
+
+        self.subfigure.plot(E, lng)
+        self.subfigure.set_title(self.filename)
 
 class KMC_densities(DCVizPlotter):
     
@@ -729,18 +762,23 @@ class KMC_densities(DCVizPlotter):
     def plot(self, data):
         
         e, DOS, visit, idx  = data       
-        
-        
-#        DOS *= exp(e/32)
-        
+
+        DOS -= DOS.min()
+
         if DOS.max() != 0:        
             DOS /= DOS.max()
         if visit.max() != 0:
             visit /= 2*visit.max()
+
+        print DOS
         
         self.subfigure.plot(idx, DOS, label="DOS")
+
+   #     self.subfigure.plot(idx[1:], idx[1:]**-0.5*DOS[1]/idx[1])
         self.subfigure.plot(idx, visit, label="visit")
+
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+        self.subfigure.set_xbound(0)
 
 
         try:
@@ -774,7 +812,8 @@ class KMC_densities(DCVizPlotter):
                     u = idx[u-1] + 1
                     
                     m = visit[l:u].mean()
-    
+                    m = 1.0
+
                     self.subfigure.plot([l, u-1], [m/2, m/2], 'r--*')                
         except:
             pass
@@ -782,6 +821,32 @@ class KMC_densities(DCVizPlotter):
         
         legend()
                 
+
+class QuasiLoadedIgnis(DCVizPlotter):
+
+    nametag = "ignisQuasi2Dloaded.arma"
+
+    armaBin = True
+
+    figMap = {"fig" : ["subfigure", "subfigure2", "concFig"]}
+
+    def plot(self, data):
+
+        hw, c, t, dh = data
+
+        self.subfigure.loglog(t, dh)
+
+        self.subfigure.set_xlabel("t")
+        self.subfigure.set_ylabel("W")
+
+        self.subfigure2.plot(t, hw)
+        self.subfigure2.set_xlabel("t")
+        self.subfigure2.set_ylabel("hw")
+
+        self.concFig.plot(t, c)
+        self.concFig.set_xlabel("t")
+        self.concFig.set_ylabel("C")
+
 
 class IGNIS_EVENTS(DCVizPlotter):
     
