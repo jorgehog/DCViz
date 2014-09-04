@@ -828,7 +828,7 @@ class QuasiLoadedIgnis(DCVizPlotter):
 
     armaBin = True
 
-    figMap = {"fig" : ["subfigure", "subfigure2"]}
+    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"]}
 
     def plot(self, data):
 
@@ -839,10 +839,16 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure.set_xlabel("t")
         self.subfigure.set_ylabel("W")
 
-        self.subfigure2.loglog(t, h/t, 'b')
-        self.subfigure2.loglog(t, (h + hw), 'r')
+        self.subfigure2.plot(t, h, 'b')
         self.subfigure2.set_xlabel("t")
-        self.subfigure2.set_ylabel("hw")
+        self.subfigure2.set_ylabel("h")
+
+        self.subfigure3.plot(t, hw, 'r')
+        self.subfigure3.set_xlabel("t")
+        self.subfigure3.set_ylabel("hw")
+
+
+
 
 
 class IGNIS_EVENTS(DCVizPlotter):

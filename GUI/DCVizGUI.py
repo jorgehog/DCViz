@@ -302,6 +302,17 @@ class DCVizGUI(QMainWindow):
 
     def clone(self, shift=True):
 
+        if self.job:
+            try:
+                running = self.job.isRunning()
+            except RuntimeError:
+                running = False
+
+            if running:
+                self.stop()
+
+
+
         pad = 10
 
         x = self.pos().x() + pad
