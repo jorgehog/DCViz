@@ -281,11 +281,16 @@ class DCVizGUI(QMainWindow):
         self.show()
         #::::::::::::::::::::::::::::::::::::::::::::::::::   
 
-    def clone(self):
+    def clone(self, shift=True):
 
-        x = self.pos().x() + 300 + 10
-        y = self.pos().y() + 10
+        pad = 10
 
+        x = self.pos().x() + pad
+        y = self.pos().y() + pad
+
+
+        if shift:
+            x += 300
 
         win = DCVizGUI(self.masterDir, (x, y))
 
@@ -296,7 +301,7 @@ class DCVizGUI(QMainWindow):
 
     def reload_classes(self):
 
-        self.clone()
+        self.clone(False)
         self.close()
 
     def startOrStop(self):

@@ -839,8 +839,8 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure.set_xlabel("t")
         self.subfigure.set_ylabel("W")
 
-        self.subfigure2.plot(t, h/t, 'b')
-        self.subfigure2.plot(t, (h + hw)/t, 'r')
+        self.subfigure2.loglog(t, h/t, 'b')
+        self.subfigure2.loglog(t, (h + hw), 'r')
         self.subfigure2.set_xlabel("t")
         self.subfigure2.set_ylabel("hw")
 
