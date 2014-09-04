@@ -108,20 +108,39 @@ class DCVizPlotWindow(QMainWindow):
 
 class DCVizGUI(QMainWindow):
 
-    def __init__(self, masterDir, initPos = (300, 300)):
+    def __init__(self, masterDir, initpos = None):
 
         reload(DCViz_classes)
 
         super(DCVizGUI, self).__init__()
-        
+
+        self.initpos = initpos
+
         self.masterDir = masterDir
         
         self.comm = ThreadComm()
         
         self.loadDefaults()
 
-        self.setupUI(initPos)
-        
+        self.setupUI()
+
+    def closeEvent(self, event):
+
+
+        config = open(os.path.join(thisDir,"config.txt"), 'w')
+        for line in self.config.split("\n"):
+            if line.startswith("initial position"):
+                config.write("initial position = %d %d\n" % (self.pos().x(), self.pos().y()))
+            else:
+                config.write(line + "\n")
+
+        config.close()
+
+
+        QMainWindow.closeEvent(self, event)
+
+
+
     def loadDefaults(self):
          
         self.path = os.getcwd()
@@ -143,7 +162,7 @@ class DCVizGUI(QMainWindow):
 
         self.loadExtern()
        
-    def setupUI(self, initPos):
+    def setupUI(self):
         
         menubar = self.menuBar()
 
@@ -255,7 +274,7 @@ class DCVizGUI(QMainWindow):
         size = (300, 150)
         buttonSize = QSize(50,50)
         
-        self.setGeometry(*(initPos+size))
+        self.setGeometry(*(self.initpos+size))
 
         self.startStopButton.resize(buttonSize)
         self.startStopButton.setIconSize(buttonSize)
@@ -441,6 +460,7 @@ class DCVizGUI(QMainWindow):
         self.config = config.read()
         config.close()
 
+        position = [int(x) for x in re.findall(r"initial position\s*\=\s*(\d+)\s*(\d+)", self.config)[0]]
         self.refreshedDt = re.findall(r"dynamic refresh interval \[seconds\]\s*=\s*(\d+\.?\d*)", self.config)[0]
         self.refreshDtConfig = float(self.refreshedDt)
         self.terminalSilence = not bool(int(re.findall("terminal tracker\s*=\s*([01])", self.config)[0]))
@@ -452,6 +472,10 @@ class DCVizGUI(QMainWindow):
         #Static overriding
         for mode in self.uniqueModes:
             mode.delay = self.refreshDtConfig
+
+        if not self.initpos:
+            self.initpos = tuple(position)
+
         
         
     def flipDynamic(self):
