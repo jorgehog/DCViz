@@ -3,6 +3,15 @@
 import os, sys, inspect, re, threading, time
 from os.path import join as pjoin
 
+try:
+    import matplotlib
+except:
+    print "\n"
+    print "You need matplotlib in order to run this library!"
+    print "sudo apt-get install python-matplotlib"
+    print "\n"
+    sys.exit(1)
+
 #Adding the srcDir to the local pythonpath in order to avoid global pythonpath sets
 srcDir= os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.append(srcDir)

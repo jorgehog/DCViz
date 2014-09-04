@@ -705,7 +705,7 @@ class quick_conc(DCVizPlotter):
     def plot(self, data):
 
         self.subfigure.plot(data.data)
-        self.subfigure.set_ybound(data.data.max()/2)
+        self.subfigure.set_ybound(0)
 
 class quick_hist(DCVizPlotter):
     
@@ -828,24 +828,21 @@ class QuasiLoadedIgnis(DCVizPlotter):
 
     armaBin = True
 
-    figMap = {"fig" : ["subfigure", "subfigure2", "concFig"]}
+    figMap = {"fig" : ["subfigure", "subfigure2"]}
 
     def plot(self, data):
 
-        hw, c, t, dh = data
+        hw, h, t, dh = data
 
         self.subfigure.loglog(t, dh)
 
         self.subfigure.set_xlabel("t")
         self.subfigure.set_ylabel("W")
 
-        self.subfigure2.plot(t, hw)
+        self.subfigure2.plot(t, h/t, 'b')
+        self.subfigure2.plot(t, (h + hw)/t, 'r')
         self.subfigure2.set_xlabel("t")
         self.subfigure2.set_ylabel("hw")
-
-        self.concFig.plot(t, c)
-        self.concFig.set_xlabel("t")
-        self.concFig.set_ylabel("C")
 
 
 class IGNIS_EVENTS(DCVizPlotter):

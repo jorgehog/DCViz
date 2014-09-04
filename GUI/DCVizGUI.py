@@ -28,9 +28,9 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 srcDir = os.path.join(os.path.dirname(thisDir), "src")
 sys.path.append(srcDir)
-from DCViz_classes import *
+import DCViz_classes
 
-
+from DCVizWrapper import autodetectModes
 
 class ThreadComm(QObject):
     stopSignal = Signal()
@@ -108,8 +108,10 @@ class DCVizPlotWindow(QMainWindow):
 
 class DCVizGUI(QMainWindow):
 
-    def __init__(self, masterDir):
-        
+    def __init__(self, masterDir, initPos = (300, 300)):
+
+        reload(DCViz_classes)
+
         super(DCVizGUI, self).__init__()
         
         self.masterDir = masterDir
@@ -118,7 +120,7 @@ class DCVizGUI(QMainWindow):
         
         self.loadDefaults()
 
-        self.setupUI()
+        self.setupUI(initPos)
         
     def loadDefaults(self):
          
@@ -141,7 +143,7 @@ class DCVizGUI(QMainWindow):
 
         self.loadExtern()
        
-    def setupUI(self):
+    def setupUI(self, initPos):
         
         menubar = self.menuBar()
 
@@ -185,9 +187,19 @@ class DCVizGUI(QMainWindow):
         optmenu.addAction(showConfigAction)
 
         reloadConfigAction = QAction('&Reload Config', self)
-        reloadConfigAction.setShortcut('Ctrl+R')
+        reloadConfigAction.setShortcut('Ctrl+Alt+R')
         reloadConfigAction.triggered.connect(lambda : self.loadExtern(True))
         optmenu.addAction(reloadConfigAction)
+
+        clone_action = QAction('&Clone', self)
+        clone_action.setShortcut('C')
+        clone_action.triggered.connect(lambda: self.clone())
+        optmenu.addAction(clone_action)
+
+        reload_classes_action = QAction('&Refresh Classes', self)
+        reload_classes_action.setShortcut('Ctrl+R')
+        reload_classes_action.triggered.connect(lambda: self.reload_classes())
+        optmenu.addAction(reload_classes_action)
         #::::::::::::::::::::::::::::::::::::::::::::::::::
 
         #  StartButton ::::::::::::::::::::::::::::::::::::
@@ -240,13 +252,10 @@ class DCVizGUI(QMainWindow):
 
 
         #  GUI Setup ::::::::::::::::::::::::::::::::::::::
-        initPos = (300, 300)
         size = (300, 150)
         buttonSize = QSize(50,50)
         
         self.setGeometry(*(initPos+size))
- 
-        
 
         self.startStopButton.resize(buttonSize)
         self.startStopButton.setIconSize(buttonSize)
@@ -271,7 +280,25 @@ class DCVizGUI(QMainWindow):
 
         self.show()
         #::::::::::::::::::::::::::::::::::::::::::::::::::   
-        
+
+    def clone(self):
+
+        x = self.pos().x() + 300 + 10
+        y = self.pos().y() + 10
+
+
+        win = DCVizGUI(self.masterDir, (x, y))
+
+        for mode in self.modeMap.values():
+            win.detectModetype(mode.filepath)
+        win.updateModeSelector()
+        win.setWindowTitle('DCViz GUI')
+
+    def reload_classes(self):
+
+        self.clone()
+        self.close()
+
     def startOrStop(self):
         
         if self.started:
@@ -458,7 +485,7 @@ class DCVizGUI(QMainWindow):
         classfile.close()
 
         self.uniqueModesNames = re.findall('^class (\w+)\(DCVizPlotter\):', raw, re.MULTILINE)
-        self.uniqueModes = [eval(subclass) for subclass in self.uniqueModesNames]
+        self.uniqueModes = [eval("DCViz_classes." + subclass) for subclass in self.uniqueModesNames]
         
         self.terminalTracker("Detector", "Found subclasses %s" \
                                 % str(self.uniqueModesNames).strip("]").strip("["))
@@ -473,7 +500,7 @@ class DCVizGUI(QMainWindow):
             except:
                 self.raiseWarning("Subclass %s has no attribute 'nametag' (output filename identifier)." % \
                                   self.uniqueModesNames[self.uniqueModes.index(mode)])
-        
+
     
     def updateModeSelector(self, silent=False):
 
