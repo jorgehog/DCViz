@@ -3,6 +3,7 @@
 
 import sys, re, os, inspect, datetime
 from re import findall as find
+from wx._gdi import DC
 
 try:
     import numpy
@@ -157,40 +158,48 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
 
-try:
-    from scipy.stats import linregress
-    
-    class forces1D(DCVizPlotter):
-        
-        nametag = "forces\.arma"
-        
-        armaBin = True
-        
-        figMap = {"fig" : ("subfigure", "figure")}
-        def plot(self, data):
-            
-            all_dr = linspace(0.9, 1, len(data));      
-            
-            dr = (1 - all_dr)[::-1]
-    
-            data.data = data.data[::-1]
-            
-            self.subfigure.plot(dr, data.data)
-            self.subfigure.set_xlabel("compression")
-            self.subfigure.set_ylabel("wall force")
-            
-            self.figure.plot(dr, log(data.data))
-            self.figure.set_xlabel("compression")
-            self.figure.set_ylabel("log(wall force)")
-            
-            b = len(data.data)/20
-            slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
-            
-            print dr[b:]
-            self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
-            pylab.legend(loc=0)
-except:
-    pass        
+from scipy.stats import linregress
+
+class forces1D(DCVizPlotter):
+
+    nametag = "forces\.arma"
+
+    armaBin = True
+
+    figMap = {"fig" : ("subfigure", "figure")}
+    def plot(self, data):
+
+        all_dr = linspace(0.9, 1, len(data));
+
+        dr = (1 - all_dr)[::-1]
+
+        data.data = data.data[::-1]
+
+        self.subfigure.plot(dr, data.data)
+        self.subfigure.set_xlabel("compression")
+        self.subfigure.set_ylabel("wall force")
+
+        self.figure.plot(dr, log(data.data))
+        self.figure.set_xlabel("compression")
+        self.figure.set_ylabel("log(wall force)")
+
+        b = len(data.data)/20
+        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
+
+        print dr[b:]
+        self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
+        pylab.legend(loc=0)
+
+
+class acf_height(DCVizPlotter):
+
+    nametag = "acf\.arma"
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)
 
 class heighMap(DCVizPlotter):
 
@@ -609,6 +618,24 @@ class mdOutCpp(DCVizPlotter):
 #        self.eventFigure.axes.set_xlim([0, _N-1])
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
+
+class IGNIS_TEST(DCVizPlotter):
+
+    nametag = "ignis_test\.ign"
+
+    fileBin = True
+
+    binaryHeaderBitSizes = [4, 4]
+    nColsFromHeaderLoc = 1
+
+    def plot(self, data):
+
+        for i in range(self.Ncols):
+            self.subfigure.plot(data[i], label="%d" % i)
+
+        legend()
+
+
 class KMC_LAMMPS(DCVizPlotter):
 
     #The name tag of the files to load (of course dumped by lammpswriter.h)    
@@ -824,15 +851,18 @@ class KMC_densities(DCVizPlotter):
 
 class QuasiLoadedIgnis(DCVizPlotter):
 
-    nametag = "ignisQuasi2Dloaded.arma"
+    nametag = "ignisQuasi2Dloaded.ign"
 
-    armaBin = True
+    fileBin = True
+
+    binaryHeaderBitSizes = [4, 4]
+    nColsFromHeaderLoc = 1
 
     figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"]}
 
     def plot(self, data):
 
-        hw, h, t, dh = data
+        t, h, dh, hw = data
 
         self.subfigure.loglog(t, dh)
 
@@ -843,9 +873,9 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure2.set_xlabel("t")
         self.subfigure2.set_ylabel("h")
 
-        self.subfigure3.plot(t, hw, 'r')
-        self.subfigure3.set_xlabel("t")
-        self.subfigure3.set_ylabel("hw")
+        self.subfigure3.plot(dh, hw-h, 'kx', markersize=0.5)
+        self.subfigure3.set_xlabel("RMS(h)")
+        self.subfigure3.set_ylabel("hw - m(h)")
 
 
 

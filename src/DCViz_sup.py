@@ -735,7 +735,8 @@ class DCVizPlotter:
             
             if self.nColsFromHeaderLoc and not self.Ncols:
                 self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
-              
+
+
     def saveFigs(self):
             
         path, fname = os.path.split(self.filepath)
