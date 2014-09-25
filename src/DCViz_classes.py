@@ -199,7 +199,10 @@ class acf_height(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data.data/data.data.max())
+        self.subfigure.set_xlim(0, 20)
+        self.subfigure.set_xlabel("dx")
+        self.subfigure.set_ylabel("acf(dx)")
 
 class heighMap(DCVizPlotter):
 
