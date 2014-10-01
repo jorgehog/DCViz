@@ -315,25 +315,25 @@ class DCVizPlotter:
         while len(data) == 0:
 
             self.reload()
-            
+
             if self.armaBin:
-                data = self.unpackArmaMatBin(self.file)      
+                data = self.unpackArmaMatBin(self.file)
             elif self.fileBin:
                 data = self.unpackBinFile(self.file)
             elif self.numpyBin:
                 data = self.unpackNumpyBin(self.file)
             else:
                 data = []
-                
+
                 for line in self.file:
                     data.append(line.split()[self.skipCols:])
-                
+
                 data = numpy.array(data, dtype=numpy.float)
-                
+
 #                data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
                 data = data if self.transpose else data.transpose()
-     
-                
+
+
             if time.time() - t0 > 10.0:
                self.Error("TIMEOUT: File was empty for too long...")
                self.file.close()

@@ -861,11 +861,27 @@ class QuasiLoadedIgnis(DCVizPlotter):
     binaryHeaderBitSizes = [4, 4]
     nColsFromHeaderLoc = 1
 
-    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"]}
+    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4"]}
 
     def plot(self, data):
 
-        t, h, dh, hw = data
+        S = 10
+
+        if data.m != 4:
+            t, h, dh, hw, eqC, mc = data
+
+            eqC = eqC[::S]
+            mc = mc[::S]
+
+        else:
+            t, h, dh, hw = data
+            eqC = empty(0)
+            mc = empty(0)
+
+        t = t[::S]
+        h = h[::S]
+        dh = dh[::S]
+        hw = hw[::S]
 
         self.subfigure.loglog(t, dh)
 
@@ -879,6 +895,20 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure3.plot(dh, hw-h, 'kx', markersize=0.5)
         self.subfigure3.set_xlabel("RMS(h)")
         self.subfigure3.set_ylabel("hw - m(h)")
+
+        self.subfigure4.plot(eqC)
+        self.subfigure4.set_xlabel("cycle")
+        self.subfigure4.set_ylabel("cEq")
+
+        nonzero = where(mc != 0)
+        if not nonzero:
+            return
+
+        mc = mc[nonzero]
+
+        self.subfigure4.plot(nonzero[0], mc, label="mean")
+        self.subfigure4.legend()
+
 
 
 
