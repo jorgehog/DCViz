@@ -1,5 +1,6 @@
 
 # -*- coding: utf-8 -*-
+from mx.Tools.Tools import nonzero
 
 import sys, re, os, inspect, datetime
 from re import findall as find
@@ -200,7 +201,7 @@ class acf_height(DCVizPlotter):
     def plot(self, data):
 
         self.subfigure.plot(data.data/data.data.max())
-        self.subfigure.set_xlim(0, 20)
+        self.subfigure.set_xlim(0, 30)
         self.subfigure.set_xlabel("dx")
         self.subfigure.set_ylabel("acf(dx)")
 
@@ -212,7 +213,7 @@ class heighMap(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data)        
+        self.subfigure.plot(data.data - data.data.min())
         
         
 class testStuff(DCVizPlotter):
@@ -866,12 +867,23 @@ class QuasiLoadedIgnis(DCVizPlotter):
     def plot(self, data):
 
         S = 10
+        print data.m
 
-        if data.m != 4:
+        if data.m == 6:
             t, h, dh, hw, eqC, mc = data
 
             eqC = eqC[::S]
             mc = mc[::S]
+
+        elif data.m == 5:
+            t, h, dh, eqC, mc = data
+            hw = h
+
+        elif data.m == 3:
+             t, h, dh = data
+             eqC = empty(0)
+             mc = empty(0)
+             hw = h
 
         else:
             t, h, dh, hw = data
@@ -892,11 +904,17 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure2.set_xlabel("t")
         self.subfigure2.set_ylabel("h")
 
+
         self.subfigure3.plot(dh, hw-h, 'kx', markersize=0.5)
         self.subfigure3.set_xlabel("RMS(h)")
         self.subfigure3.set_ylabel("hw - m(h)")
 
-        self.subfigure4.plot(eqC)
+        nonzeroEq = where(eqC != 0)
+
+        if not nonzeroEq:
+            return
+
+        self.subfigure4.plot(eqC[nonzeroEq])
         self.subfigure4.set_xlabel("cycle")
         self.subfigure4.set_ylabel("cEq")
 
@@ -906,7 +924,7 @@ class QuasiLoadedIgnis(DCVizPlotter):
 
         mc = mc[nonzero]
 
-        self.subfigure4.plot(nonzero[0], mc, label="mean")
+        self.subfigure4.plot(mc, label="mean")
         self.subfigure4.legend()
 
 

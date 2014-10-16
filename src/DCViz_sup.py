@@ -729,11 +729,15 @@ class DCVizPlotter:
                     bintype = self.binaryHeaderTypes[i]
                 else:
                     bintype = self.defaultBinaryHeaderTypes[size]
-                
-                self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+
+                try:
+                    self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+                except struct.error:
+                    return
+
                 offset += size
             
-            if self.nColsFromHeaderLoc and not self.Ncols:
+            if self.nColsFromHeaderLoc:
                 self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
 
 
