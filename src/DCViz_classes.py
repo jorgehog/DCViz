@@ -772,6 +772,8 @@ class KMC_densities(DCVizPlotter):
     
     armaBin = True
 
+    plotIdx = False
+
     def mapIndex(self, indices, index):
         hits = where(indices == index)[0]
 
@@ -795,39 +797,50 @@ class KMC_densities(DCVizPlotter):
         e, DOS, visit, idx  = data       
 
         DOS -= DOS.min()
-
-        if DOS.max() != 0:        
-            DOS /= DOS.max()
+        #
+        # if DOS.max() != 0:
+        #     DOS /= DOS.max()
         if visit.max() != 0:
-            visit /= 2*visit.max()
+            visit *= (DOS.max()/(2*visit.max()))
 
-        print DOS
-        
-        self.subfigure.plot(idx, DOS, label="DOS")
+        if self.plotIdx:
+            self.subfigure.plot(idx, DOS, label="log(DOS(X))")
+        else:
+            self.subfigure.plot(e, DOS, label="log(DOS(X))")
 
    #     self.subfigure.plot(idx[1:], idx[1:]**-0.5*DOS[1]/idx[1])
-        self.subfigure.plot(idx, visit, label="visit")
+
+        if self.plotIdx:
+            self.subfigure.plot(idx, visit, label="visit")
+        else:
+            self.subfigure.plot(e, visit, label="visit")
 
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
         self.subfigure.set_xbound(0)
+        self.subfigure.set_xlabel("X")
 
 
         try:
             with open(os.path.join(self.path, 'flatness.txt'), 'r') as f:
     
                 for line in f:
-    
+
                     l, u = [int(x) for x in line.split()]
     
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u-1) + 1
-                    
-                    l = idx[l]
-                    u = idx[u-1] + 1
-                    
+
+                    if self.plotIdx:
+                        el = idx[l]
+                        eu = idx[u-1] + 1
+                    else:
+                        el = e[l]
+                        eu = e[u-1]
+
+
                     m = visit[l:u].mean()
-    
-                    self.subfigure.plot([l, u-1], [m/2, m/2], 'g--*')
+
+                    self.subfigure.plot([el, eu], [m, m], 'k--*')
                     
     
             with open(os.path.join(self.path, 'roughness.txt'), 'r') as f:
@@ -838,19 +851,21 @@ class KMC_densities(DCVizPlotter):
     
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u - 1) + 1
-                    
-                    l = idx[l]
-                    u = idx[u-1] + 1
-                    
-                    m = visit[l:u].mean()
-                    m = 1.0
 
-                    self.subfigure.plot([l, u-1], [m/2, m/2], 'r--*')                
+                    if self.plotIdx:
+                        el = idx[l]
+                        eu = idx[u-1] + 1
+                    else:
+                        el = e[l]
+                        eu = e[u-1]
+
+                    self.subfigure.plot([el, eu], [1./2, 1./2], 'r--*')
         except:
+            print "something bad..."
             pass
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
-        legend()
+        legend(loc=0)
                 
 
 class QuasiLoadedIgnis(DCVizPlotter):
@@ -862,52 +877,68 @@ class QuasiLoadedIgnis(DCVizPlotter):
     binaryHeaderBitSizes = [4, 4]
     nColsFromHeaderLoc = 1
 
-    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4"]}
+    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4", "cumfig"]}
+
 
     def plot(self, data):
 
         S = 10
-        print data.m
 
-        if data.m == 6:
-            t, h, dh, hw, eqC, mc = data
+        if data.m == 8:
+            t, h, dh, cum, surfsize, hw, eqC, mc = data
 
             eqC = eqC[::S]
             mc = mc[::S]
 
-        elif data.m == 5:
-            t, h, dh, eqC, mc = data
+        elif data.m == 7:
+            t, h, dh, cum, surfsize, eqC, mc = data
             hw = h
 
-        elif data.m == 3:
-             t, h, dh = data
-             eqC = empty(0)
-             mc = empty(0)
-             hw = h
+        elif data.m == 5:
+            t, h, dh, cum, surfsize = data
+            eqC = empty(0)
+            mc = empty(0)
+            hw = h
 
         else:
-            t, h, dh, hw = data
+            t, h, dh, cum, surfsize, hw = data
             eqC = empty(0)
             mc = empty(0)
 
         t = t[::S]
         h = h[::S]
         dh = dh[::S]
+        cum = cum[::S]
         hw = hw[::S]
 
-        self.subfigure.loglog(t, dh)
-
-        self.subfigure.set_xlabel("t")
-        self.subfigure.set_ylabel("W")
 
         self.subfigure2.plot(t, h, 'b')
         self.subfigure2.set_xlabel("t")
         self.subfigure2.set_ylabel("h")
 
+        nonZeroDh = where(dh != 0)
 
-        self.subfigure3.plot(dh, hw-h, 'kx', markersize=0.5)
+        if not nonZeroDh:
+            return
+
+        dh = dh[nonZeroDh]
+        self.subfigure.loglog(t[nonZeroDh], dh)
+
+        self.subfigure.set_xlabel("t")
+        self.subfigure.set_ylabel("W")
+
+        self.subfigure3.plot(dh, hw[nonZeroDh], 'kx', markersize=0.5)
         self.subfigure3.set_xlabel("RMS(h)")
         self.subfigure3.set_ylabel("hw - m(h)")
+
+        nonZeroCum = where(cum != 0)
+
+        if not nonZeroCum:
+            return
+
+        self.cumfig.plot(t[nonZeroCum], cum[nonZeroCum])
+        self.cumfig.set_xlabel("t")
+        self.cumfig.set_ylabel("k")
 
         nonzeroEq = where(eqC != 0)
 
@@ -928,7 +959,38 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure4.legend()
 
 
+class logmtvec(DCVizPlotter):
 
+    nametag = "logmtvec*"
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)
+
+import itertools
+from random import choice
+
+class ebs_s(DCVizPlotter):
+
+    nametag = "eb_s_(.*)\.arma"
+
+    isFamilyMember = True
+
+    armaBin = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+        for name, eb_s in zip(self.familyFileNames, data):
+
+            eb, s = eb_s
+
+            self.subfigure.plot(eb, s, self.colors.next() + self.markers.next(), label=re.findall(self.nametag, name)[0])
+
+        self.subfigure.legend()
 
 
 

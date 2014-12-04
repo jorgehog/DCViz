@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, signal, os, sys, struct
+import re, numpy, time, signal, os, sys, struct, itertools
 
 import matplotlib.pylab as plab
 
@@ -129,9 +129,9 @@ class DCVizPlotter:
     fig_size = None
     relative_fig_size = None
     
-    markers = ['*', '+', '^']
-    lines   = ['-', '--']
-    colors  = ['g', 'b', 'r', 'c', 'k']
+    markers = itertools.cycle(['*', 'o', '^', '+', 'x'])
+    lines   = itertools.cycle(['-', '--'])
+    colors  = itertools.cycle(['b', 'r', 'g', 'k', 'c'])
 
     anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
 
@@ -387,15 +387,12 @@ class DCVizPlotter:
                 _data[:, i] = data[i*dims[0]:(i+1)*dims[0]]
                 
             data = _data
-                
-        
+
         if self.transpose:
             data.resize(dims)
             data = data.transpose()
         else:
             data.resize(dims)
-        
-                
         
         return data
     
