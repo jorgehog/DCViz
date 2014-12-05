@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, numpy, time, signal, os, sys, struct
+import re, numpy, time, signal, os, sys, struct, itertools
 
 import matplotlib.pylab as plab
 
@@ -93,7 +93,7 @@ class DCVizPlotter:
     transpose = False    
     
     isFamilyMember = False
-    familyName = "unnamed"
+    familyName = None
     familyFileNames = []
     familyHome = None
     loadLatest = False
@@ -130,15 +130,18 @@ class DCVizPlotter:
     fig_size = None
     relative_fig_size = None
     
-    markers = ['*', '+', '^']
-    lines   = ['-', '--']
-    colors  = ['g', 'b', 'r', 'c', 'k']
+    markers = itertools.cycle(['*', 'o', '^', '+', 'x'])
+    lines   = itertools.cycle(['-', '--'])
+    colors  = itertools.cycle(['b', 'r', 'g', 'k', 'c'])
 
     anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
 
     
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
-        
+
+        if not self.familyName:
+            self.familyName = self.__class__.__name__
+
         if not self.nametag:
             raise RuntimeError("An instance of DCViz must have a specified nametag.")
         
@@ -313,25 +316,25 @@ class DCVizPlotter:
         while len(data) == 0:
 
             self.reload()
-            
+
             if self.armaBin:
-                data = self.unpackArmaMatBin(self.file)      
+                data = self.unpackArmaMatBin(self.file)
             elif self.fileBin:
                 data = self.unpackBinFile(self.file)
             elif self.numpyBin:
                 data = self.unpackNumpyBin(self.file)
             else:
                 data = []
-                
+
                 for line in self.file:
                     data.append(line.split()[self.skipCols:])
-                
+
                 data = numpy.array(data, dtype=numpy.float)
-                
+
 #                data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
                 data = data if self.transpose else data.transpose()
-     
-                
+
+
             if time.time() - t0 > 10.0:
                self.Error("TIMEOUT: File was empty for too long...")
                self.file.close()
@@ -368,17 +371,15 @@ class DCVizPlotter:
         armaFormat =  armaFile.readline()
 
         dims = tuple([int(d) for d in armaFile.readline().strip().split()])
-        
+
         if 0 in dims:
             print "Zero dimension array loaded.", dims
             return []
-        
+
         if "IS004" in armaFormat:
             dtype = numpy.int32
         else:
             dtype = numpy.float64
-        
-        
         
         data = numpy.fromfile(armaFile, dtype=dtype).transpose()
 
@@ -389,14 +390,12 @@ class DCVizPlotter:
                 _data[:, i] = data[i*dims[0]:(i+1)*dims[0]]
                 
             data = _data
-                
+
         if self.transpose:
             data.resize(dims)
             data = data.transpose()
         else:
             data.resize(dims)
-        
-                
         
         return data
     
@@ -551,11 +550,11 @@ class DCVizPlotter:
         self.manageFigures()
         self.initFamily()
 
-        while (self.shouldReplot()):
+        while self.shouldReplot():
 
             self.clear()
            
-            data = self.get_data(setUpFamily = self.isFamilyMember)
+            data = self.get_data(setUpFamily=self.isFamilyMember)
 
             self.plot(data)  
             self.showFigures()
@@ -730,13 +729,18 @@ class DCVizPlotter:
                     bintype = self.binaryHeaderTypes[i]
                 else:
                     bintype = self.defaultBinaryHeaderTypes[size]
-                
-                self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+
+                try:
+                    self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+                except struct.error:
+                    return
+
                 offset += size
             
-            if self.nColsFromHeaderLoc and not self.Ncols:
+            if self.nColsFromHeaderLoc:
                 self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
-              
+
+
     def saveFigs(self):
             
         path, fname = os.path.split(self.filepath)

@@ -28,9 +28,9 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 srcDir = os.path.join(os.path.dirname(thisDir), "src")
 sys.path.append(srcDir)
-from DCViz_classes import *
+import DCViz_classes
 
-
+from DCVizWrapper import autodetectModes
 
 class ThreadComm(QObject):
     stopSignal = Signal()
@@ -108,10 +108,14 @@ class DCVizPlotWindow(QMainWindow):
 
 class DCVizGUI(QMainWindow):
 
-    def __init__(self, masterDir):
-        
+    def __init__(self, masterDir, initpos = None):
+
+        reload(DCViz_classes)
+
         super(DCVizGUI, self).__init__()
-        
+
+        self.initpos = initpos
+
         self.masterDir = masterDir
         
         self.comm = ThreadComm()
@@ -119,7 +123,24 @@ class DCVizGUI(QMainWindow):
         self.loadDefaults()
 
         self.setupUI()
-        
+
+    def closeEvent(self, event):
+
+
+        config = open(os.path.join(thisDir,"config.txt"), 'w')
+        for line in self.config.split("\n"):
+            if line.startswith("initial position"):
+                config.write("initial position = %d %d\n" % (self.pos().x(), self.pos().y()))
+            else:
+                config.write(line + "\n")
+
+        config.close()
+
+
+        QMainWindow.closeEvent(self, event)
+
+
+
     def loadDefaults(self):
          
         self.path = os.getcwd()
@@ -185,9 +206,19 @@ class DCVizGUI(QMainWindow):
         optmenu.addAction(showConfigAction)
 
         reloadConfigAction = QAction('&Reload Config', self)
-        reloadConfigAction.setShortcut('Ctrl+R')
+        reloadConfigAction.setShortcut('Ctrl+Alt+R')
         reloadConfigAction.triggered.connect(lambda : self.loadExtern(True))
         optmenu.addAction(reloadConfigAction)
+
+        clone_action = QAction('&Clone', self)
+        clone_action.setShortcut('C')
+        clone_action.triggered.connect(lambda: self.clone())
+        optmenu.addAction(clone_action)
+
+        reload_classes_action = QAction('&Refresh Classes', self)
+        reload_classes_action.setShortcut('Ctrl+R')
+        reload_classes_action.triggered.connect(lambda: self.reload_classes())
+        optmenu.addAction(reload_classes_action)
         #::::::::::::::::::::::::::::::::::::::::::::::::::
 
         #  StartButton ::::::::::::::::::::::::::::::::::::
@@ -240,13 +271,10 @@ class DCVizGUI(QMainWindow):
 
 
         #  GUI Setup ::::::::::::::::::::::::::::::::::::::
-        initPos = (300, 300)
         size = (300, 150)
         buttonSize = QSize(50,50)
         
-        self.setGeometry(*(initPos+size))
- 
-        
+        self.setGeometry(*(self.initpos+size))
 
         self.startStopButton.resize(buttonSize)
         self.startStopButton.setIconSize(buttonSize)
@@ -271,7 +299,41 @@ class DCVizGUI(QMainWindow):
 
         self.show()
         #::::::::::::::::::::::::::::::::::::::::::::::::::   
-        
+
+    def clone(self, shift=True):
+
+        if self.job:
+            try:
+                running = self.job.isRunning()
+            except RuntimeError:
+                running = False
+
+            if running:
+                self.stop()
+
+
+
+        pad = 10
+
+        x = self.pos().x() + pad
+        y = self.pos().y() + pad
+
+
+        if shift:
+            x += 300
+
+        win = DCVizGUI(self.masterDir, (x, y))
+
+        for mode in self.modeMap.values():
+            win.detectModetype(mode.filepath)
+        win.updateModeSelector()
+        win.setWindowTitle('DCViz GUI')
+
+    def reload_classes(self):
+
+        self.clone(False)
+        self.close()
+
     def startOrStop(self):
         
         if self.started:
@@ -365,7 +427,14 @@ class DCVizGUI(QMainWindow):
         self.updateModeSelector()
         
     def detectModetype(self, filename):
-  
+
+        strippedFilename = os.path.split(filename)[-1]
+
+        if ".arma.tmp_" in strippedFilename or strippedFilename.startswith(".tmp_"):
+
+            self.terminalTracker("Detector", "arma temp file %s ignored." % strippedFilename.split(".tmp_")[-1])
+            return
+
         s = 15
         for mode in self.uniqueModes:
             if re.findall(mode.nametag, filename):
@@ -381,13 +450,13 @@ class DCVizGUI(QMainWindow):
         
                 
                 self.terminalTracker("Detector", "matched [%s] with [%s]" %  \
-                          (os.path.split(filename)[-1].center(s), \
+                          (strippedFilename.center(s), \
                             self.uniqueModesNames[self.uniqueModes.index(mode)].center(s)))
                 
                 self.modeMap[str(modeInstance)] = modeInstance
                 return
                 
-        self.terminalTracker("Detector", "'%s' does not match any DCViz class" % os.path.split(filename)[-1])
+        self.terminalTracker("Detector", "'%s' does not match any DCViz class" % strippedFilename)
 
     def checkConsistency(self, modeInstance):
         return str(modeInstance) in self.modeMap.keys()
@@ -402,6 +471,7 @@ class DCVizGUI(QMainWindow):
         self.config = config.read()
         config.close()
 
+        position = [int(x) for x in re.findall(r"initial position\s*\=\s*(\d+)\s*(\d+)", self.config)[0]]
         self.refreshedDt = re.findall(r"dynamic refresh interval \[seconds\]\s*=\s*(\d+\.?\d*)", self.config)[0]
         self.refreshDtConfig = float(self.refreshedDt)
         self.terminalSilence = not bool(int(re.findall("terminal tracker\s*=\s*([01])", self.config)[0]))
@@ -413,6 +483,10 @@ class DCVizGUI(QMainWindow):
         #Static overriding
         for mode in self.uniqueModes:
             mode.delay = self.refreshDtConfig
+
+        if not self.initpos:
+            self.initpos = tuple(position)
+
         
         
     def flipDynamic(self):
@@ -451,7 +525,7 @@ class DCVizGUI(QMainWindow):
         classfile.close()
 
         self.uniqueModesNames = re.findall('^class (\w+)\(DCVizPlotter\):', raw, re.MULTILINE)
-        self.uniqueModes = [eval(subclass) for subclass in self.uniqueModesNames]
+        self.uniqueModes = [eval("DCViz_classes." + subclass) for subclass in self.uniqueModesNames]
         
         self.terminalTracker("Detector", "Found subclasses %s" \
                                 % str(self.uniqueModesNames).strip("]").strip("["))
@@ -466,7 +540,7 @@ class DCVizGUI(QMainWindow):
             except:
                 self.raiseWarning("Subclass %s has no attribute 'nametag' (output filename identifier)." % \
                                   self.uniqueModesNames[self.uniqueModes.index(mode)])
-        
+
     
     def updateModeSelector(self, silent=False):
 

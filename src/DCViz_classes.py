@@ -1,8 +1,10 @@
 
 # -*- coding: utf-8 -*-
+from mx.Tools.Tools import nonzero
 
 import sys, re, os, inspect, datetime
 from re import findall as find
+from wx._gdi import DC
 
 try:
     import numpy
@@ -159,38 +161,52 @@ class standardBinaryArmaVec(DCVizPlotter):
 
 try:
     from scipy.stats import linregress
-    
-    class forces1D(DCVizPlotter):
-        
-        nametag = "forces\.arma"
-        
-        armaBin = True
-        
-        figMap = {"fig" : ("subfigure", "figure")}
-        def plot(self, data):
-            
-            all_dr = linspace(0.9, 1, len(data));      
-            
-            dr = (1 - all_dr)[::-1]
-    
-            data.data = data.data[::-1]
-            
-            self.subfigure.plot(dr, data.data)
-            self.subfigure.set_xlabel("compression")
-            self.subfigure.set_ylabel("wall force")
-            
-            self.figure.plot(dr, log(data.data))
-            self.figure.set_xlabel("compression")
-            self.figure.set_ylabel("log(wall force)")
-            
-            b = len(data.data)/20
-            slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
-            
-            print dr[b:]
-            self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
-            pylab.legend(loc=0)
 except:
-    pass        
+    pass
+
+class forces1D(DCVizPlotter):
+
+    nametag = "forces\.arma"
+
+    armaBin = True
+
+    figMap = {"fig" : ("subfigure", "figure")}
+    def plot(self, data):
+
+        all_dr = linspace(0.9, 1, len(data));
+
+        dr = (1 - all_dr)[::-1]
+
+        data.data = data.data[::-1]
+
+        self.subfigure.plot(dr, data.data)
+        self.subfigure.set_xlabel("compression")
+        self.subfigure.set_ylabel("wall force")
+
+        self.figure.plot(dr, log(data.data))
+        self.figure.set_xlabel("compression")
+        self.figure.set_ylabel("log(wall force)")
+
+        b = len(data.data)/20
+        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
+
+        print dr[b:]
+        self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
+        pylab.legend(loc=0)
+
+
+class acf_height(DCVizPlotter):
+
+    nametag = "acf\.arma"
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data/data.data.max())
+        self.subfigure.set_xlim(0, 30)
+        self.subfigure.set_xlabel("dx")
+        self.subfigure.set_ylabel("acf(dx)")
 
 class heighMap(DCVizPlotter):
 
@@ -200,7 +216,7 @@ class heighMap(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data)        
+        self.subfigure.plot(data.data - data.data.min())
         
         
 class testStuff(DCVizPlotter):
@@ -609,6 +625,24 @@ class mdOutCpp(DCVizPlotter):
 #        self.eventFigure.axes.set_xlim([0, _N-1])
 #        self.eventFigure.axes.set_ylim([0, T0*m*1.2])
 
+
+class IGNIS_TEST(DCVizPlotter):
+
+    nametag = "ignis_test\.ign"
+
+    fileBin = True
+
+    binaryHeaderBitSizes = [4, 4]
+    nColsFromHeaderLoc = 1
+
+    def plot(self, data):
+
+        for i in range(self.Ncols):
+            self.subfigure.plot(data[i], label="%d" % i)
+
+        legend()
+
+
 class KMC_LAMMPS(DCVizPlotter):
 
     #The name tag of the files to load (of course dumped by lammpswriter.h)    
@@ -692,6 +726,21 @@ class nucleationHistograms(DCVizPlotter):
 #        self.subfigure.set_xlabel("Binding Energy [E0]")
 #        self.subfigure.set_ylabel("Density of States")        
 
+class quick_conc(DCVizPlotter):
+
+    nametag = "conc(\d+).arma"
+
+    #isFamilyMember = True
+
+    #loadLatest = True
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)
+        self.subfigure.set_ybound(0)
+
 class quick_hist(DCVizPlotter):
     
     nametag = "hist\.arma"    
@@ -702,11 +751,31 @@ class quick_hist(DCVizPlotter):
         
         self.subfigure.plot(data.data)
 
-class WLMC_densities(DCVizPlotter):
+class WLMC_C(DCVizPlotter):
+
+    nametag = "wl(\d+)\.dat"
+    isFamilyMember = True
+    loadSequential = True
+
+
+
+    transpose = True
+
+    def plot(self, data):
+
+        print data.shape
+        bin, E, Eavg, H, lng = data
+
+        self.subfigure.plot(E, lng)
+        self.subfigure.set_title(self.filename)
+
+class KMC_densities(DCVizPlotter):
     
     nametag = "stateDensity(\d+)\.arma"
     
     armaBin = True
+
+    plotIdx = False
 
     def mapIndex(self, indices, index):
         hits = where(indices == index)[0]
@@ -729,36 +798,53 @@ class WLMC_densities(DCVizPlotter):
     def plot(self, data):
         
         e, DOS, visit, idx  = data       
-        
-        
-#        DOS *= exp(e/32)
-        
-        if DOS.max() != 0:        
-            DOS /= DOS.max()
-        if visit.max() != 0:
-            visit /= 2*visit.max()
 
-        self.subfigure.plot(idx, DOS, label="DOS")
-        self.subfigure.plot(idx, visit, label="visit")
+        DOS -= DOS.min()
+        #
+        # if DOS.max() != 0:
+        #     DOS /= DOS.max()
+        if visit.max() != 0:
+
+            visit *= (DOS.max()/(2*visit.max()))
+
+        if self.plotIdx:
+            self.subfigure.plot(idx, DOS, label="log(DOS(X))")
+        else:
+            self.subfigure.plot(e, DOS, label="log(DOS(X))")
+
+   #     self.subfigure.plot(idx[1:], idx[1:]**-0.5*DOS[1]/idx[1])
+
+        if self.plotIdx:
+            self.subfigure.plot(idx, visit, label="visit")
+        else:
+            self.subfigure.plot(e, visit, label="visit")
+
         self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+        self.subfigure.set_xbound(0)
+        self.subfigure.set_xlabel("X")
 
 
         try:
             with open(os.path.join(self.path, 'flatness.txt'), 'r') as f:
     
                 for line in f:
-    
+
                     l, u = [int(x) for x in line.split()]
     
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u-1) + 1
-                    
-                    l = idx[l]
-                    u = idx[u-1] + 1
-                    
+
+                    if self.plotIdx:
+                        el = idx[l]
+                        eu = idx[u-1] + 1
+                    else:
+                        el = e[l]
+                        eu = e[u-1]
+
+
                     m = visit[l:u].mean()
-    
-                    self.subfigure.plot([l, u-1], [m/2, m/2], 'g--*')
+
+                    self.subfigure.plot([el, eu], [m, m], 'k--*')
                     
     
             with open(os.path.join(self.path, 'roughness.txt'), 'r') as f:
@@ -769,19 +855,148 @@ class WLMC_densities(DCVizPlotter):
     
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u - 1) + 1
-                    
-                    l = idx[l]
-                    u = idx[u-1] + 1
-                    
-                    m = visit[l:u].mean()
-    
-                    self.subfigure.plot([l, u-1], [m/2, m/2], 'r--*')                
+
+                    if self.plotIdx:
+                        el = idx[l]
+                        eu = idx[u-1] + 1
+                    else:
+                        el = e[l]
+                        eu = e[u-1]
+
+                    self.subfigure.plot([el, eu], [1./2, 1./2], 'r--*')
         except:
+            print "something bad..."
             pass
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
-        legend()
+        legend(loc=0)
                 
+
+class QuasiLoadedIgnis(DCVizPlotter):
+
+    nametag = "ignisQuasi2Dloaded.ign"
+
+    fileBin = True
+
+    binaryHeaderBitSizes = [4, 4]
+    nColsFromHeaderLoc = 1
+
+    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4", "cumfig"]}
+
+
+    def plot(self, data):
+
+        S = 10
+
+        if data.m == 8:
+            t, h, dh, cum, surfsize, hw, eqC, mc = data
+
+            eqC = eqC[::S]
+            mc = mc[::S]
+
+        elif data.m == 7:
+            t, h, dh, cum, surfsize, eqC, mc = data
+            hw = h
+
+        elif data.m == 5:
+            t, h, dh, cum, surfsize = data
+            eqC = empty(0)
+            mc = empty(0)
+            hw = h
+
+        else:
+            t, h, dh, cum, surfsize, hw = data
+            eqC = empty(0)
+            mc = empty(0)
+
+        t = t[::S]
+        h = h[::S]
+        dh = dh[::S]
+        cum = cum[::S]
+        hw = hw[::S]
+
+
+        self.subfigure2.plot(t, h, 'b')
+        self.subfigure2.set_xlabel("t")
+        self.subfigure2.set_ylabel("h")
+
+        nonZeroDh = where(dh != 0)
+
+        if not nonZeroDh:
+            return
+
+        dh = dh[nonZeroDh]
+        self.subfigure.loglog(t[nonZeroDh], dh)
+
+        self.subfigure.set_xlabel("t")
+        self.subfigure.set_ylabel("W")
+
+        self.subfigure3.plot(dh, hw[nonZeroDh], 'kx', markersize=0.5)
+        self.subfigure3.set_xlabel("RMS(h)")
+        self.subfigure3.set_ylabel("hw - m(h)")
+
+        nonZeroCum = where(cum != 0)
+
+        if not nonZeroCum:
+            return
+
+        self.cumfig.plot(t[nonZeroCum], cum[nonZeroCum])
+        self.cumfig.set_xlabel("t")
+        self.cumfig.set_ylabel("k")
+
+        nonzeroEq = where(eqC != 0)
+
+        if not nonzeroEq:
+            return
+
+        self.subfigure4.plot(eqC[nonzeroEq])
+        self.subfigure4.set_xlabel("cycle")
+        self.subfigure4.set_ylabel("cEq")
+
+        nonzero = where(mc != 0)
+        if not nonzero:
+            return
+
+        mc = mc[nonzero]
+
+        self.subfigure4.plot(mc, label="mean")
+        self.subfigure4.legend()
+
+
+class logmtvec(DCVizPlotter):
+
+    nametag = "logmtvec*"
+
+    armaBin = True
+
+    def plot(self, data):
+
+        self.subfigure.plot(data.data)
+
+import itertools
+from random import choice
+
+class ebs_s(DCVizPlotter):
+
+    nametag = "eb_s_(.*)\.arma"
+
+    isFamilyMember = True
+
+    armaBin = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+        for name, eb_s in zip(self.familyFileNames, data):
+
+            eb, s = eb_s
+
+            self.subfigure.plot(eb, s, self.colors.next() + self.markers.next(), label=re.findall(self.nametag, name)[0])
+
+        self.subfigure.legend()
+
+
 
 class IGNIS_EVENTS(DCVizPlotter):
     
@@ -1114,7 +1329,7 @@ class radial_out(DCVizPlotter):
             self.radialFig.set_ylabel(r'$\rho(r)$')
 
         if self.yMax is not None:
-            self.radialFig.set_ylim(0, yMax)
+            self.radialFig.set_ylim(0, self.yMax)
         self.radialFig.axes.set_ybound(0)
         
         self.radialFig.axes.get_yaxis().get_label().set_fontsize(30)
@@ -1407,9 +1622,10 @@ class Scaling(DCVizPlotter):
         Molecules_N = numpy.array([2, 6, 8, 10, 12, 14, 16])
         Molecules_T = numpy.array([0.49, 2.02, 3.27, 5, 7, 9.42, 12.24])
         
-        
-        from scipy.stats import linregress as l2
-          
+        try:
+            from scipy.stats import linregress as l2
+        except:
+            pass
             
               
         
@@ -1554,8 +1770,12 @@ class E_vs_w(DCVizPlotter):
             subfigG.set_ylabel("Ekin/N^%.2f" % alpha)
             subfigG.set_xlabel("(Eosc + Ecol)/N^%.2f" % beta)
 #            subfigG.set_title("N = %s" % N)
-                        
-            from scipy.stats import linregress as l2
+
+            try:
+                from scipy.stats import linregress as l2
+            except:
+                pass
+
             n = len(ek)
             
             treshHigh = n/2
