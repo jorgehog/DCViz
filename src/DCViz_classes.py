@@ -191,6 +191,14 @@ class forces1D(DCVizPlotter):
         self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
         pylab.legend(loc=0)
 
+class hist_stuff(DCVizPlotter):
+
+    nametag = "hist\.arma"
+
+    armaBin = True
+
+    def plot(self, data):
+        self.subfigure.plot(data.data)
 
 class acf_height(DCVizPlotter):
 
@@ -969,8 +977,21 @@ class logmtvec(DCVizPlotter):
 
         self.subfigure.plot(data.data)
 
-import itertools
-from random import choice
+
+class fit_scale(DCVizPlotter):
+
+    nametag = "scale_fits\.arma";
+
+    armaBin = True
+
+    def plot(self, data):
+
+        im = self.subfigure.imshow(data.data)
+        self.subfigure.set_xlabel("power")
+        self.subfigure.set_ylabel("scale")
+        self.figure.colorbar(im)
+
+
 
 class ebs_s(DCVizPlotter):
 
