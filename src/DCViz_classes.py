@@ -1,10 +1,7 @@
 
 # -*- coding: utf-8 -*-
-from mx.Tools.Tools import nonzero
-
 import sys, re, os, inspect, datetime
 from re import findall as find
-from wx._gdi import DC
 
 try:
     import numpy
@@ -221,7 +218,7 @@ class heighMap(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data - data.data.min())
+        self.subfigure.bar(arange(data.n), data.data - data.data.min(), width=1.0, linewidth=0)
         
         
 class testStuff(DCVizPlotter):
@@ -762,8 +759,6 @@ class WLMC_C(DCVizPlotter):
     isFamilyMember = True
     loadSequential = True
 
-
-
     transpose = True
 
     def plot(self, data):
@@ -780,7 +775,11 @@ class KMC_densities(DCVizPlotter):
     
     armaBin = True
 
-    plotIdx = False
+    plotIdx = True
+
+    plotvisit = False
+
+    hugifyFonts = True
 
     def mapIndex(self, indices, index):
         hits = where(indices == index)[0]
@@ -800,11 +799,18 @@ class KMC_densities(DCVizPlotter):
         
         return hits[0];
 
+    def hasAwesome(self):
+        return "awesome.arma" in os.listdir(self.path)
+
+    def loadaws(self):
+        with open(os.path.join(self.path, "awesome.arma"), 'rb') as f:
+            return self.unpackArmaMatBin(f)
+
     def plot(self, data):
         
         e, DOS, visit, idx  = data       
 
-        DOS -= DOS.min()
+        # DOS -= DOS.min()
         #
         # if DOS.max() != 0:
         #     DOS /= DOS.max()
@@ -812,20 +818,32 @@ class KMC_densities(DCVizPlotter):
             visit *= (DOS.max()/(2*visit.max()))
 
         if self.plotIdx:
-            self.subfigure.plot(idx, DOS, label="log(DOS(X))")
+            self.subfigure.plot(idx, DOS, 'bs', fillstyle="none")
         else:
             self.subfigure.plot(e, DOS, label="log(DOS(X))")
 
+        if self.hasAwesome():
+
+            aws = self.loadaws()
+
+            if self.plotIdx:
+                self.subfigure.plot(aws, 'r^', fillstyle="none")
+
+
    #     self.subfigure.plot(idx[1:], idx[1:]**-0.5*DOS[1]/idx[1])
 
-        if self.plotIdx:
-            self.subfigure.plot(idx, visit, label="visit")
-        else:
-            self.subfigure.plot(e, visit, label="visit")
+        if self.plotvisit:
+            if self.plotIdx:
+                self.subfigure.plot(idx, visit, label="visit")
+            else:
+                self.subfigure.plot(e, visit, label="visit")
 
-        self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
-        self.subfigure.set_xbound(0)
-        self.subfigure.set_xlabel("X")
+            self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
+        self.subfigure.set_xbound(-0.5)
+        self.subfigure.set_ybound(-0.5)
+
+        self.subfigure.set_xlabel("s")
+        self.subfigure.set_ylabel("$\log(\Omega (s))$")
 
 
         try:
@@ -869,7 +887,6 @@ class KMC_densities(DCVizPlotter):
 
                     self.subfigure.plot([el, eu], [1./2, 1./2], 'r--*')
         except:
-            print "something bad..."
             pass
 #        self.subfigure.set_xlim(e.min(), e.max())        
         
@@ -1008,11 +1025,100 @@ class ebs_s(DCVizPlotter):
         for name, eb_s in zip(self.familyFileNames, data):
 
             eb, s = eb_s
+            eb = eb[:]
+            s = s[:]
 
-            self.subfigure.plot(eb, s, self.colors.next() + self.markers.next(), label=re.findall(self.nametag, name)[0])
+            self.subfigure.plot(eb, s, self.colors.next() + self.markers.next(), fillstyle="none", label=re.findall(self.nametag, name)[0])
+        # self.subfigure.plot(eb, exp(-0.5*eb))
+        # self.subfigure.plot(eb, exp(exp(-9/4.*eb+1) - eb/2 + 1./10))
+
+        self.subfigure.set_xbound(0)
+        self.subfigure.set_xlabel("Eb/kT")
+        self.subfigure.set_ylabel(r"$\langle s\rangle/L$")
+        self.subfigure.legend()
+
+
+class shifts(DCVizPlotter):
+
+    nametag = "shifts\.arma|values\.arma"
+
+    isFamilyMember = True
+
+    armaBin = True
+
+    hugifyFonts = True
+
+    def indexFromName(self, name):
+        for i, fname in enumerate(self.familyFileNames):
+            if fname == name:
+                return i
+
+
+    def plot(self, data):
+
+        shifts = data[self.indexFromName("shifts.arma")][0][1:]
+        values = data[self.indexFromName("values.arma")][0][:-1]
+
+        self.subfigure.plot(shifts, marker='x', label="shifts")
+        self.subfigure.plot(values, marker='o', label="values")
+        self.subfigure.plot([0 for i in range(len(values))], 'r--', label="exact")
+
+        self.subfigure.set_xlabel("n")
+        #self.subfigure.legend()
+
+
+class s_vs_eb_collapse(DCVizPlotter):
+
+    nametag = "varl_boltzmann_ascii(\d+)\.arma"
+
+    isFamilyMember = True
+
+    def plot(self, family_data):
+
+        for name, data in zip(self.familyFileNames, family_data):
+
+            L = self.getNumberForSort(name)
+            ebs, s = data.data
+
+            c = self.colors.next()
+            m = self.markers.next()
+
+            self.subfigure.plot(ebs, s, c + m, label="L="+str(L))
+
+        self.subfigure.legend()
+        self.subfigure.set_xlabel("alpha")
+        self.subfigure.set_ylabel("s/L")
+
+class s_vs_eb_blocked(DCVizPlotter):
+
+    nametag = ".*_blocking\.dat"
+    skipCols = 1
+
+    transpose = True
+
+    figMap={"figure" : "subfigure", "fig2" : "errorfig"}
+
+    def plot(self, data):
+
+        s, err = data
+        err *= 1
+
+        alphas = []
+        for name in self.skippedCols[0]:
+            alpha = re.findall("alpha_(.+?)_mu", name)[0]
+            L = re.findall("L_(.+?)_alpha", name)[0]
+            alphas.append(float(alpha))
+
+        analytical_path = os.path.join("/tmp", "boltzmann_ascii%s.arma" % L)
+        if os.path.exists(analytical_path):
+            analytical = numpy.loadtxt(analytical_path)
+            self.subfigure.plot(analytical[:, 0], analytical[:, 1], 'k^', label="analytical", fillstyle='none')
+
+        self.subfigure.axes.errorbar(alphas, s, yerr=err, fmt='o', fillstyle='none', label="KMC")
 
         self.subfigure.legend()
 
+        self.errorfig.plot(alphas, err, 'k*')
 
 
 class IGNIS_EVENTS(DCVizPlotter):
