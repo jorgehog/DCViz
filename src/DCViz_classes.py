@@ -156,7 +156,10 @@ class standardBinaryArmaVec(DCVizPlotter):
         self.sf.axes.set_ylabel("F")
         self.subfigure.axes.set_ylabel("-cumsum(F)")
 
-from scipy.stats import linregress
+try:
+    from scipy.stats import linregress
+except:
+    pass
 
 class forces1D(DCVizPlotter):
 
@@ -815,6 +818,7 @@ class KMC_densities(DCVizPlotter):
         # if DOS.max() != 0:
         #     DOS /= DOS.max()
         if visit.max() != 0:
+
             visit *= (DOS.max()/(2*visit.max()))
 
         if self.plotIdx:
@@ -1452,7 +1456,7 @@ class radial_out(DCVizPlotter):
             self.radialFig.set_ylabel(r'$\rho(r)$')
 
         if self.yMax is not None:
-            self.radialFig.set_ylim(0, yMax)
+            self.radialFig.set_ylim(0, self.yMax)
         self.radialFig.axes.set_ybound(0)
         
         self.radialFig.axes.get_yaxis().get_label().set_fontsize(30)
@@ -1745,9 +1749,10 @@ class Scaling(DCVizPlotter):
         Molecules_N = numpy.array([2, 6, 8, 10, 12, 14, 16])
         Molecules_T = numpy.array([0.49, 2.02, 3.27, 5, 7, 9.42, 12.24])
         
-        
-        from scipy.stats import linregress as l2
-          
+        try:
+            from scipy.stats import linregress as l2
+        except:
+            pass
             
               
         
@@ -1787,7 +1792,20 @@ class Scaling(DCVizPlotter):
         self.fig4.legend(loc=2)
         self.fig4.set_ylabel("t[s]")
         self.fig4.set_xlabel("N")
+
+class HeatCap(DCVizPlotter):
+    
+    nametag = "CT\.arma"
+    armaBin = True    
+    
+    def plot(self, data):
         
+        C, T = data        
+        
+        self.subfigure.plot(T, C)
+        self.subfigure.set_ybound(0)
+        self.subfigure.set_ylabel("C(T)")
+        self.subfigure.set_xlabel("T")
         
 class E_vs_w(DCVizPlotter):
     
@@ -1879,8 +1897,12 @@ class E_vs_w(DCVizPlotter):
             subfigG.set_ylabel("Ekin/N^%.2f" % alpha)
             subfigG.set_xlabel("(Eosc + Ecol)/N^%.2f" % beta)
 #            subfigG.set_title("N = %s" % N)
-                        
-            from scipy.stats import linregress as l2
+
+            try:
+                from scipy.stats import linregress as l2
+            except:
+                pass
+
             n = len(ek)
             
             treshHigh = n/2

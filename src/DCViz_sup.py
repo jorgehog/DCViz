@@ -69,7 +69,8 @@ class dataGenerator:
 
 
 class DCVizPlotter:
-    
+
+    subfigure = None
     figMap = {}
     
     nametag = None
@@ -124,7 +125,7 @@ class DCVizPlotter:
  
     hugifyFonts = False
     labelSize= 20
-    fontSize = 20 #Only invoked by hugifyFonts = True
+    fontSize = 20  # Only invoked by hugifyFonts = True
     tickSize = 2
     
     fig_size = None
@@ -376,13 +377,15 @@ class DCVizPlotter:
         armaFormat =  armaFile.readline()
 
         dims = tuple([int(d) for d in armaFile.readline().strip().split()])
-      
+
+        if 0 in dims:
+            print "Zero dimension array loaded.", dims
+            return []
+
         if "IS004" in armaFormat:
             dtype = numpy.int32
         else:
             dtype = numpy.float64
-        
-        
         
         data = numpy.fromfile(armaFile, dtype=dtype).transpose()
 
