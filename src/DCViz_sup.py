@@ -105,6 +105,7 @@ class DCVizPlotter:
 
 
     skippedRows = []
+    skippedCols = []
     skipCols = 0
     skipRows = None
     
@@ -327,7 +328,12 @@ class DCVizPlotter:
                 data = []
 
                 for line in self.file:
-                    data.append(line.split()[self.skipCols:])
+                    split = line.split()
+                    data.append(split[self.skipCols:])
+                    self.skippedCols.append(split[:self.skipCols])
+
+                if self.skipCols != 0:
+                    self.skippedCols = zip(*self.skippedCols)
 
                 data = numpy.array(data, dtype=numpy.float)
 
