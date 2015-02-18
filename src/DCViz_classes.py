@@ -743,13 +743,16 @@ class quick_conc(DCVizPlotter):
 
 class quick_hist(DCVizPlotter):
     
-    nametag = "hist\.arma"    
+    nametag = "hist\.npy"    
     
-    armaBin = True
-    
+    numpyBin = True
+    figMap = {"fig" : ["subfigure", "sf2"]}
+
     def plot(self, data):
         
         self.subfigure.plot(data.data)
+        self.subfigure.set_ybound(0)
+        self.sf2.plot(data.data)
 
 class WLMC_C(DCVizPlotter):
 
