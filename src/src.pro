@@ -1,10 +1,6 @@
 CONFIG -= app_bundle
 CONFIG -= qt
 
-!noccache {
-    QMAKE_CXX = ccache $$QMAKE_CXX
-}
-
 COMMON_CXXFLAGS = -std=c++11
 
 QMAKE_CXXFLAGS += \
