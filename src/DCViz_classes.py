@@ -213,6 +213,34 @@ class acf_height(DCVizPlotter):
         self.subfigure.set_xlabel("dx")
         self.subfigure.set_ylabel("acf(dx)")
 
+class SolidOnSolidHeights(DCVizPlotter):
+
+    nametag = "SOSHeights\.arma"
+
+    armaBin = True
+
+    figMap = {"fig3D" : []}
+
+    def plot(self, data):
+        ax = Axes3D(self.fig3D)
+
+        hist = data.data - data.data.min() + 1
+
+        elements = data.n*data.m
+
+        xpos, ypos = np.meshgrid(arange(data.n), arange(data.m))
+
+        xpos = xpos.flatten()
+        ypos = ypos.flatten()
+        zpos = np.zeros(elements)
+        dx = np.ones_like(zpos)
+        dy = dx.copy()
+        dz = hist.flatten()
+
+        ax.bar3d(xpos, ypos, zpos, dx, dy, dz, linewidth=0)
+
+
+
 class heighMap(DCVizPlotter):
 
     nametag = "heights\.arma"
@@ -243,17 +271,15 @@ class heighMap(DCVizPlotter):
 
 class testStuff(DCVizPlotter):
     
-    nametag = "testStuff\.arma"
+    nametag = "heights\.arma"
     
     armaBin = True
     
     def plot(self, data):
-        
-        x, y, = data
-        
-        print x.shape, y.shape
-        self.subfigure.scatter(x, y, s = 1000)
-      
+
+        self.subfigure.plot(data.data, 'b*')
+
+
 class KMC_1D(DCVizPlotter):
 
     nametag = "1DKMC\.npy"
@@ -765,13 +791,16 @@ class quick_conc(DCVizPlotter):
 
 class quick_hist(DCVizPlotter):
     
-    nametag = "hist\.arma"    
+    nametag = "hist\.npy"    
     
-    armaBin = True
-    
+    numpyBin = True
+    figMap = {"fig" : ["subfigure", "sf2"]}
+
     def plot(self, data):
         
         self.subfigure.plot(data.data)
+        self.subfigure.set_ybound(0)
+        self.sf2.plot(data.data)
 
 class WLMC_C(DCVizPlotter):
 
@@ -795,9 +824,7 @@ class KMC_densities(DCVizPlotter):
     
     armaBin = True
 
-    plotIdx = True
-
-    plotvisit = False
+    plotvisit = True
 
     hugifyFonts = True
 
@@ -820,11 +847,16 @@ class KMC_densities(DCVizPlotter):
         return hits[0];
 
     def hasAwesome(self):
-        return "awesome.arma" in os.listdir(self.path)
+
+        if not "canonical_logMTVec.arma" in os.listdir("/tmp/"):
+            return False
+        return True
 
     def loadaws(self):
-        with open(os.path.join(self.path, "awesome.arma"), 'rb') as f:
-            return self.unpackArmaMatBin(f)
+
+        with open("/tmp/canonical_logMTVec.arma", 'rb') as f:
+            return self.unpackArmaMatBin(f)[1:]
+
 
     def plot(self, data):
         
@@ -838,26 +870,26 @@ class KMC_densities(DCVizPlotter):
 
             visit *= (DOS.max()/(2*visit.max()))
 
-        if self.plotIdx:
-            self.subfigure.plot(idx, DOS, 'bs', fillstyle="none")
-        else:
-            self.subfigure.plot(e, DOS, label="log(DOS(X))")
+
 
         if self.hasAwesome():
 
             aws = self.loadaws()
 
-            if self.plotIdx:
-                self.subfigure.plot(aws, 'r^', fillstyle="none")
+            self.subfigure.plot(aws, 'r^', fillstyle="none")
 
+            X = linspace(0, len(aws), len(DOS))
+        else:
+            X = idx
+
+        self.subfigure.plot(X, DOS, 'bs', fillstyle="none")
+
+        self.subfigure.set_xlim(0, X[-1])
 
    #     self.subfigure.plot(idx[1:], idx[1:]**-0.5*DOS[1]/idx[1])
 
         if self.plotvisit:
-            if self.plotIdx:
-                self.subfigure.plot(idx, visit, label="visit")
-            else:
-                self.subfigure.plot(e, visit, label="visit")
+            self.subfigure.plot(X, visit, 'g', label="visit")
 
             self.subfigure.set_title("flatness = %g" % (visit.min()/visit.mean()))
         self.subfigure.set_xbound(-0.5)
@@ -877,13 +909,8 @@ class KMC_densities(DCVizPlotter):
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u-1) + 1
 
-                    if self.plotIdx:
-                        el = idx[l]
-                        eu = idx[u-1] + 1
-                    else:
-                        el = e[l]
-                        eu = e[u-1]
-
+                    el = X[l]
+                    eu = X[u-1] + 1
 
                     m = visit[l:u].mean()
 
@@ -899,12 +926,8 @@ class KMC_densities(DCVizPlotter):
                     l = self.mapIndex(idx, l)
                     u = self.mapIndex(idx, u - 1) + 1
 
-                    if self.plotIdx:
-                        el = idx[l]
-                        eu = idx[u-1] + 1
-                    else:
-                        el = e[l]
-                        eu = e[u-1]
+                    el = X[l]
+                    eu = X[u-1] + 1
 
                     self.subfigure.plot([el, eu], [1./2, 1./2], 'r--*')
         except:
@@ -913,6 +936,34 @@ class KMC_densities(DCVizPlotter):
         
         legend(loc=0)
                 
+
+class logDOS_test(DCVizPlotter):
+
+    nametag = "canonical_logMTVec\.arma"
+
+    armaBin = True
+
+    def plot(self, data):
+        s = arange(len(data))
+        self.subfigure.plot(data.data)
+
+
+class QuasiLoadedIgnis20(DCVizPlotter):
+
+    nametag = "ignisSOS.ign"
+
+    fileBin = True
+
+    binaryHeaderBitSizes = [4, 4]
+    nColsFromHeaderLoc = 1
+
+    figMap = {"fig1" : ["sfig", "hfig"]}
+
+    def plot(self, data):
+        s, h = data
+
+        self.sfig.plot(s)
+        self.hfig.plot(h)
 
 class QuasiLoadedIgnis(DCVizPlotter):
 
