@@ -96,6 +96,7 @@ class DCVizPlotter:
     familyName = None
     familyFileNames = []
     familyHome = None
+    familyHead = None
     loadLatest = False
     loadSequential = False
     getNumberForSort = lambda _s, x : int(re.findall(_s.nametag, x)[0])
@@ -130,7 +131,9 @@ class DCVizPlotter:
     
     fig_size = None
     relative_fig_size = None
-    
+
+    tight = True
+
     markers = itertools.cycle(['*', 'o', '^', '+', 'x'])
     lines   = itertools.cycle(['-', '--'])
     colors  = itertools.cycle(['b', 'r', 'g', 'k', 'c'])
@@ -195,9 +198,12 @@ class DCVizPlotter:
         shuffle(styles)
         return styles
 
+    def get_family_index_from_name(self, name):
+        return self.familyFileNames.index(name)
+
     def get_family(self):
         
-        familyHome, _ = os.path.split(self.filepath)
+        familyHome, self.familyHead = os.path.split(self.filepath)
             
         if not familyHome:
             self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
@@ -207,7 +213,9 @@ class DCVizPlotter:
                         if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
        
         familyMembers = sorted([pjoin(familyHome, name) for name in familyNames])     
-        
+
+        self.familyHome = familyHome
+
         return familyMembers
 
     def dictify(self, data):
@@ -217,6 +225,15 @@ class DCVizPlotter:
             _data[name] = fdata
             
         data = _data
+
+    def get_nametag_match(self, name):
+
+        match = re.findall(self.nametag, name)
+
+        if not match:
+            return ""
+
+        return match[0]
 
     def get_data(self, setUpFamily):
 
@@ -796,6 +813,10 @@ class DCVizPlotter:
         
     def show(self, drawOnly=False):
         for fig in self.figures:
+
+            if self.tight:
+                fig[0].tight_layout()
+
 #            try:
             fig[0].canvas.draw()
 #            except:

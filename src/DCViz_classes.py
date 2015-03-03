@@ -215,15 +215,32 @@ class acf_height(DCVizPlotter):
 
 class heighMap(DCVizPlotter):
 
-    nametag = "heighmap\.arma"
-    
+    nametag = "heights\.arma"
+
     armaBin = True
 
     def plot(self, data):
 
-        self.subfigure.bar(arange(data.n), data.data - data.data.min(), width=1.0, linewidth=0)
-        
-        
+        fs = rcParams["figure.figsize"]
+        ar = fs[1]/fs[0]
+        y_max = int(ar*data.n)
+
+        Z = data.data - data.data.min()
+
+        if (y_max/2 > Z.max()):
+            Z += y_max/2;
+
+            for i, zi in enumerate(Z):
+                self.subfigure.scatter(i+0.5, zi, marker='s', color='r', s = 0.09*(data.n/fs[0])**2)
+
+                self.subfigure.set_ylim(0, y_max)
+        else:
+            self.subfigure.set_ybound(0)
+
+        self.subfigure.bar(arange(data.n), Z, width=1.0, linewidth=0)
+
+        self.subfigure.set_xlim(0, data.n-1)
+
 class testStuff(DCVizPlotter):
     
     nametag = "testStuff\.arma"
@@ -906,38 +923,37 @@ class QuasiLoadedIgnis(DCVizPlotter):
     binaryHeaderBitSizes = [4, 4]
     nColsFromHeaderLoc = 1
 
-    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4", "cumfig"]}
+    figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4"]}
 
 
     def plot(self, data):
 
-        S = 10
+        S = 100
 
         if data.m == 8:
-            t, h, dh, cum, surfsize, hw, eqC, mc = data
+            t, h, dh, surfsize, s, hw, eqC, mc = data
 
             eqC = eqC[::S]
             mc = mc[::S]
 
         elif data.m == 7:
-            t, h, dh, cum, surfsize, eqC, mc = data
+            t, h, dh, surfsize, s, eqC, mc = data
             hw = h
 
         elif data.m == 5:
-            t, h, dh, cum, surfsize = data
+            t, h, dh, surfsize, s = data
             eqC = empty(0)
             mc = empty(0)
             hw = h
 
         else:
-            t, h, dh, cum, surfsize, hw = data
+            t, h, dh, surfsize, s, hw = data
             eqC = empty(0)
             mc = empty(0)
 
         t = t[::S]
         h = h[::S]
         dh = dh[::S]
-        cum = cum[::S]
         hw = hw[::S]
 
 
@@ -960,16 +976,8 @@ class QuasiLoadedIgnis(DCVizPlotter):
         self.subfigure3.set_xlabel("RMS(h)")
         self.subfigure3.set_ylabel("hw - m(h)")
 
-        nonZeroCum = where(cum != 0)
-
-        if not nonZeroCum:
-            return
-
-        self.cumfig.plot(t[nonZeroCum], cum[nonZeroCum])
-        self.cumfig.set_xlabel("t")
-        self.cumfig.set_ylabel("k")
-
         nonzeroEq = where(eqC != 0)
+        print nonzeroEq
 
         if not nonzeroEq:
             return
@@ -1042,6 +1050,93 @@ class ebs_s(DCVizPlotter):
         self.subfigure.legend()
 
 
+class SOSanalyze(DCVizPlotter):
+
+    nametag = "analyze_(.+)\.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    figMap = {"figure" : "subfigure", "figure_2" : "mean_figure"}
+
+    def plot(self, data):
+
+        dirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead)[0]
+
+        print dirname
+
+        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
+        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)].data
+        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
+
+        s0_cut = where(s0 >= 0)
+        r0_cut = where(r0 >= 0.4)
+
+        s0_idx, r0_idx = numpy.meshgrid(s0_cut, r0_cut)
+
+
+        ax = Axes3D(self.figure)
+
+
+        X, Y = numpy.meshgrid(s0[s0_cut], r0[r0_cut])
+
+        Z = C[s0_idx, r0_idx]
+
+        colormap = cm.Greens
+
+        ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=colormap, linewidth=0)
+
+        zdir = "x"
+        offset = ax.get_xlim()[0]
+
+        cset = ax.contour(X, Y, Z, zdir=zdir, offset=offset*1.05, color='#008000')
+
+        ax.set_xbound(0)
+        ax.set_zlim(0, Z.max())
+
+        ax.set_xlabel(r"$\sigma_0$")
+        ax.set_ylabel(r"$r_0$")
+        ax.view_init(30, -65)
+
+        self.subfigure.axes.contourf(X, Y, Z, zdir='z', cmap=colormap)
+        self.subfigure.set_xlabel(r"$\sigma_0$")
+        self.subfigure.set_ylabel(r"$r_0$", rotation=0)
+        # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
+        # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
+
+        r0_mean = C.sum(axis=0)/len(s0)
+        r0_mean = r0_mean[r0_cut]
+
+        r0 = r0[r0_cut]
+
+        r0_mean /= r0
+
+        self.mean_figure.plot(r0, r0_mean)
+        self.mean_figure.set_xbound(0)
+
+        from scipy.optimize import curve_fit
+
+        f = lambda x, a, b: a/(x + b)
+
+        popt, pcov = curve_fit(f, r0, r0_mean, p0=(1., 1.))
+
+        a, b= popt
+
+        f = np.vectorize(f)
+
+        self.mean_figure.plot(r0, f(r0, a, b))
+
+        print a, b, a-b
+
+
+
+
+
+
+
 class shifts(DCVizPlotter):
 
     nametag = "shifts\.arma|values\.arma"
@@ -1052,23 +1147,71 @@ class shifts(DCVizPlotter):
 
     hugifyFonts = True
 
-    def indexFromName(self, name):
-        for i, fname in enumerate(self.familyFileNames):
-            if fname == name:
-                return i
-
-
     def plot(self, data):
 
-        shifts = data[self.indexFromName("shifts.arma")][0][1:]
-        values = data[self.indexFromName("values.arma")][0][:-1]
+        cut = 5
 
-        self.subfigure.plot(shifts, marker='x', label="shifts")
-        self.subfigure.plot(values, marker='o', label="values")
-        self.subfigure.plot([0 for i in range(len(values))], 'r--', label="exact")
+        # shifts = data[self.get_family_index_from_name("shifts.arma")][0]
+        values = data[self.get_family_index_from_name("values.arma")][0]
 
-        self.subfigure.set_xlabel("n")
-        #self.subfigure.legend()
+        print sum(values[cut:])/(len(values) - cut)
+
+        n = avg1 = avg2 = 0
+        for v in values[cut:]:
+            avg1 += v
+            avg2 += v*v
+            n+=1
+        std = sqrt(1./(n-1)*avg2 - avg1*avg1/(n*(n-1)))
+        print std
+
+        # self.subfigure.plot(-shifts,'^', label="shifts")
+        self.subfigure.plot(values, "k--s",
+                            markersize=7,
+                            markeredgewidth=1.5,
+                            linewidth=1,
+                            label="values",
+                            fillstyle="none")
+
+        self.subfigure.plot([0 for i in range(len(values))], 'r--', linewidth=3, label="exact")
+        self.subfigure.axes.set_xticks(range(cut + 1))
+
+        self.subfigure.set_xlabel(r"$k$")
+        self.subfigure.set_ylabel(r"$\gamma_k$")
+        self.subfigure.axes.set_xlim(-0.1, cut)
+        self.subfigure.axes.set_ylim(-0.05, 1.1)
+        # self.subfigure.legend()
+
+        # zoomfac = len(values)/2
+        #
+        # if len(shifts) <= zoomfac + 3:
+        #     return
+        #
+        # X = range(zoomfac, len(shifts))
+        #
+        # self.zoomed.plot(X, shifts[zoomfac:], marker='x', label="shifts")
+        # self.zoomed.plot(X, values[zoomfac:], marker='o', label="values")
+        # self.zoomed.plot(X, [0 for i in range(len(values) - zoomfac)], 'r--', label="exact")
+        # self.zoomed.set_xlabel("n")
+        #
+        # avg = 0
+        # for start in X:
+        #     shift_sum = 0
+        #     avg2 = 0
+        #     for i, value in enumerate(values[start:]):
+        #         avg2 += value
+        #         shift_sum += 1
+        #     avg2 /= shift_sum
+        #
+        #     print sum(values[start:])/(len(values) - start), avg2
+        #
+        #     avg += avg2
+        #
+        #
+        # print avg/len(X), values[-1], sum(values)/len(values)
+
+
+
+        # self.zoomed.legend()
 
 
 class s_vs_eb_collapse(DCVizPlotter):
@@ -1093,6 +1236,109 @@ class s_vs_eb_collapse(DCVizPlotter):
         self.subfigure.set_xlabel("alpha")
         self.subfigure.set_ylabel("s/L")
 
+class canonical_stuff(DCVizPlotter):
+
+    nametag = "canonical_(.*)\.arma"
+
+    armaBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    figMap = {"fig1" : "E_fig",
+              "fig2" : "VarE_fig",
+              "fig3" : "CV_fig",
+              "fig4" : "S_fig",
+              "fig5" : "A_fig",
+              "fig6" : "logZ_fig"}
+
+    conversion = {"avgS" : "E_fig",
+                  "varS" : "VarE_fig",
+                  "CV"   : "CV_fig",
+                  "S"    : "S_fig",
+                  "A"    : "A_fig",
+                  "logZ" : "logZ_fig"}
+
+    labels = {"avgS" : r"$\langle E \rangle/E_b$",
+              "varS" : r"$\sigma (E) / E_b$",
+              "CV"   : r"$C_V/k$",
+              "S"    : r"$S/k$",
+              "A"    : r"$A/E_b$",
+              "logZ" : r"$\log(Z)$"}
+
+    limits = {"avgS" : [[0, None], [0, 10]],
+              "varS" : [[0, None], [0, 0.6]],
+              "CV"   : [[0, None], [0, None]],
+              "S"    : [[0, None], [0, None]],
+              "A"    : [[0, None], [-1000, None]],
+              "logZ" : [[0, None], [0, None]]}
+
+
+    def plot(self, family_data):
+
+        alpha_index = self.get_family_index_from_name("canonical_alphas.arma")
+        alphas = family_data[alpha_index]
+
+        for i, data in enumerate(family_data):
+
+            if i == alpha_index:
+                continue
+
+            which = self.get_nametag_match(self.familyFileNames[i])
+
+            fig = eval("self.%s" % self.conversion[which])
+
+            fig.plot(alphas.data, data.data, "r-", linewidth=3)
+            fig.axes.set_xticks(range(int(round(alphas.data.max())) + 1))
+            fig.set_xlabel(r"$\alpha$")
+            fig.set_ylabel(self.labels[which])
+
+            if self.limits[which]:
+
+                if self.limits[which][0]:
+                    xmin, xmax = self.limits[which][0]
+
+                    if not xmin:
+                        xmin = fig.axes.get_xlim()[0]
+                    if not xmax:
+                        xmax = fig.axes.get_xlim()[1]
+
+                    fig.axes.set_xlim([xmin, xmax])
+
+                if self.limits[which]:
+                    ymin, ymax = self.limits[which][1]
+
+                    if not ymin:
+                        ymin = fig.axes.get_ylim()[0]
+                    if not ymax:
+                        ymax = fig.axes.get_ylim()[1]
+
+                    fig.axes.set_ylim([ymin, ymax])
+
+
+class boltzmann_ascii(DCVizPlotter):
+
+    nametag = "boltzmann_ascii(.*)\.arma"
+
+    transpose = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+        alpha, E = data
+        logE = log(E)
+
+        self.subfigure.plot(alpha, logE, "r-", linewidth=3)
+        self.subfigure.axes.set_xticks(range(int(round(alpha.max())) + 1))
+        self.subfigure.set_xbound(0)
+        self.subfigure.set_xlabel(r"$\alpha$")
+        self.subfigure.set_ylabel(r"$\log\left(\langle s_\uparrow \rangle / L\right)$")
+
+        self.subfigure.plot([0, 1], [0, 0], "k--")
+        self.subfigure.plot([1, 1,], [self.subfigure.axes.get_ylim()[0], 0], "k--")
+
 class s_vs_eb_blocked(DCVizPlotter):
 
     nametag = ".*_blocking\.dat"
@@ -1100,12 +1346,12 @@ class s_vs_eb_blocked(DCVizPlotter):
 
     transpose = True
 
-    figMap={"figure" : "subfigure", "fig2" : "errorfig"}
+    hugifyFonts = True
 
     def plot(self, data):
 
         s, err = data
-        err *= 1
+        err *= 100
 
         alphas = []
         for name in self.skippedCols[0]:
@@ -1116,13 +1362,28 @@ class s_vs_eb_blocked(DCVizPlotter):
         analytical_path = os.path.join("/tmp", "boltzmann_ascii%s.arma" % L)
         if os.path.exists(analytical_path):
             analytical = numpy.loadtxt(analytical_path)
-            self.subfigure.plot(analytical[:, 0], analytical[:, 1], 'k^', label="analytical", fillstyle='none')
+            self.subfigure.plot(analytical[:, 0], analytical[:, 1], 'r-',
+                                linewidth=3,
+                                label="$\mathrm{Analytical}$",
+                                fillstyle='none',
+                                markersize=5)
 
-        self.subfigure.axes.errorbar(alphas, s, yerr=err, fmt='o', fillstyle='none', label="KMC")
+        self.subfigure.axes.errorbar(alphas, s,
+                                     yerr=err,
+                                     fmt='s',
+                                     fillstyle='none',
+                                     label="$\mathrm{KMC}$",
+                                     markersize=7,
+                                     markeredgewidth=1.5,
+                                     linewidth=1,
+                                     color="black")
 
         self.subfigure.legend()
 
-        self.errorfig.plot(alphas, err, 'k*')
+        self.subfigure.set_xlabel(r"$\alpha$")
+        self.subfigure.set_ylabel(r"$\langle E \rangle / L$")
+        self.subfigure.set_xlim(0, max(alphas))
+        self.subfigure.set_ylim(0, max(s)*1.2)
 
 
 class IGNIS_EVENTS(DCVizPlotter):

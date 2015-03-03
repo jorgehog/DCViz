@@ -106,9 +106,17 @@ def main(path, dynamic, delay = None, toFile=False, fs=None, silent=False, makeG
     instance.mainloop()
 
 def mainToFile(path):
-    
+
+    name_set = False
+    name = ""
+
     if not os.path.isdir(path):
-        raise Exception("Supplied path must be to a directory.")
+
+        if os.path.isfile(path):
+            path, name = os.path.split(path)
+            name_set = True
+        else:
+            raise Exception("Supplied path must be to a directory or file.")
     
     modes = autodetectModes()
     for root, dirs, files in os.walk(path):
@@ -116,6 +124,11 @@ def mainToFile(path):
         init = True    
     
         for outfile in sorted(files):
+
+            if name_set:
+                if outfile != name:
+                    continue
+
             matchedMode = matchMode(modes, pjoin(root, outfile), noWarnings=True)
 
             if matchedMode is None:
