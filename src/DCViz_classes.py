@@ -1599,6 +1599,8 @@ class SOS_pressure_sizes(DCVizPlotter):
 
     hugifyFonts = True
 
+    figMap = {"fig" : "subfigure", "fig2" : "subfigure2", "fig3" : "subfigure3"}
+
     def plot(self, data):
 
         N = 3
@@ -1612,34 +1614,65 @@ class SOS_pressure_sizes(DCVizPlotter):
 
         print E0_array.shape, alphas.shape, mean_s.shape, var_s.shape
 
-        analytical_path = os.path.join("/tmp", "boltzmann_ascii256.arma")
+        analytical_path = os.path.join("/tmp", "boltzmann_ascii_full256.arma")
         if os.path.exists(analytical_path):
             analytical = numpy.loadtxt(analytical_path)
             self.subfigure.plot(analytical[:, 0], analytical[:, 1], 'r-',
                                 linewidth=3,
-                                label="$\mathrm{Analytical}$",
+                                label="$E_0 = 0$",
                                 fillstyle='none',
                                 markersize=5)
+            # self.subfigure2.plot(analytical[:, 0], analytical[:, 2], 'r-',
+            #                     linewidth=3,
+            #                     label="$E_0 = 0$",
+            #                     fillstyle='none',
+            #                     markersize=5)
+            # self.subfigure3.plot(analytical[:, 0], analytical[:, 0]**2*analytical[:, 2], 'r-',
+            #                     linewidth=3,
+            #                     label="$E_0 = 0$",
+            #                     fillstyle='none',
+            #                     markersize=5)
 
-        for i, E0_value in enumerate(E0_array):
 
-
-            if i%(len(E0_array)/(N-1)) != 0:
-                continue
+        nplots = 0
+        for i, E0_value in sorted(enumerate(E0_array), key=lambda x: x[1]):
+            #
+            #
+            # if i%(len(E0_array)/(N-1)) != 0:
+            #     continue
 
             alpha_array = alphas[i, :]
             mean_s_array = mean_s[i, :]
             var_s_array = var_s[i, :]
 
 
-            self.subfigure.plot(alpha_array, mean_s_array, 'ks',
+            self.subfigure.plot(alpha_array, mean_s_array, 'k%s' % shapes[nplots],
                                  fillstyle='none',
                                  label="$E_0 = %g$" % E0_value,
                                  markersize=7,
                                  markeredgewidth=1.5,
                                  linewidth=1)
 
-        self.subfigure.set_xbound(alpha_array.min()*0.9)
+            self.subfigure2.plot(alpha_array, var_s_array, 'k%s' % shapes[nplots],
+                     fillstyle='none',
+                     label="$E_0 = %g$" % E0_value,
+                     markersize=7,
+                     markeredgewidth=1.5,
+                     linewidth=1)
+
+            self.subfigure3.plot(alpha_array, var_s_array*alpha_array**2, 'k%s' % shapes[nplots],
+                     fillstyle='none',
+                     label="$E_0 = %g$" % E0_value,
+                     markersize=7,
+                     markeredgewidth=1.5,
+                     linewidth=1)
+
+            nplots += 1
+
+        self.subfigure.set_xlabel(r"$\alpha$")
+        self.subfigure.set_ylabel(r"$\langle s \rangle / L$")
+
+        self.subfigure.set_xbound(0)
         self.subfigure.legend()
 
 
