@@ -1113,6 +1113,20 @@ class SOSanalyze(DCVizPlotter):
 
     figMap = {"figure" : "subfigure", "figure_2" : "mean_figure"}
 
+    def stuff(self, data, dirname, label):
+        print dirname
+
+        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
+        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)].data
+        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
+
+        r0_mean = C.sum(axis=0)/len(s0)
+
+        self.mean_figure.plot(r0, r0_mean, "k^", label=label, linewidth=3,
+                                fillstyle='none',
+                                markeredgewidth=1.5,
+                                markersize=5)
+
     def plot(self, data):
 
         dirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead)[0]
@@ -1159,54 +1173,58 @@ class SOSanalyze(DCVizPlotter):
         # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
         # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
 
-        start = 0
-
         r0_mean = C.sum(axis=0)/len(s0)
-        r0_mean = r0_mean[r0_cut][start:]
+        r0_mean_fit = r0_mean[r0_cut]
 
-        r0 = r0[r0_cut][start:]
+        r0_fit = r0[r0_cut]
 
-        self.mean_figure.plot(r0, r0_mean, 'ks', fillstyle="none")
-        self.mean_figure.set_xbound(0)
-        self.mean_figure.set_xlabel(r"$r_0$")
-        self.mean_figure.set_ylabel(r"$g(r_0)$")
-        self.figure.suptitle(r"%s" % dirname.split("_")[1])
 
+        if "noshadow" in dirname:
+            label="basic"
+            otherlabel="shadowing"
+
+            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("noshadow", "shadow"))[0]
+
+        else:
+            label="shadowing"
+            otherlabel="basic"
+
+            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("shadow", "noshadow"))[0]
+
+        try:
+            self.stuff(data, otherdirname, otherlabel)
+
+        except:
+            print "error loading: ", otherdirname
+
+        self.mean_figure.plot(r0, r0_mean, 'ks',
+                              label=label,
+                              linewidth=3,
+                              fillstyle='none',
+                              markersize=5,
+                              markeredgewidth=1.5)
 
         from scipy.optimize import curve_fit
 
-        f_full = lambda x, a, b, c: a/(x*(exp(float(b)/x) - c))
-        f = lambda x, a, b, c: f_full(x, 1, b, 1)
 
-        popt, pcov = curve_fit(f, r0, r0_mean, p0=(1., 1., 1.))
+        f = lambda x, a, b, c: a*x*(1 - exp(-1/x)) + b
+
+        popt, pcov = curve_fit(f, r0_fit, r0_mean_fit, p0=(1., 0., 1))
 
         a, b, c = popt
-        print a, b, c
+        a = 1; b = 0; c = 1
 
         f = np.vectorize(f)
 
-        r0_vec = linspace(r0[0], r0[-1])
-        self.mean_figure.plot(r0_vec, f(r0_vec, a, b, c), 'r--')
+        self.mean_figure.plot(r0, f(r0, a, b, c), "r-", label="analytical")
+        self.mean_figure.legend(loc="lower right")
 
-        self.figure_2.suptitle(r"$\mathrm{%s}\quad \lambda = %g$" % (dirname.split("_")[1], b))
+        self.mean_figure.set_xlabel(r"$r_0$")
+        self.mean_figure.set_ylabel(r"$g(r_0)$")
+        self.mean_figure.set_xbound(0)
+        self.mean_figure.set_ybound(0)
 
-
-        #
-        # f_iter = lambda x : ((x*b + 1)*exp(1./x) - 1)/(a+b)
-        #
-        # x0 = 1
-        #
-        # eps = 1E-4
-        # n = 0
-        #
-        # while x0 > eps and n < 10000:
-        #     x0 = f_iter(x0)
-        #     n += 1
-        #
-        # print "found solution x0=%g with value %g" % (x0, f(x0, a, b))
-        #
-
-
+        print a, b, c
 
 
 
