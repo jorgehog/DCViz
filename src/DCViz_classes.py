@@ -1124,7 +1124,8 @@ class SOSanalyze(DCVizPlotter):
         r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
 
         s0_cut = where(s0 >= 0)
-        r0_cut = where(r0 >= 0.4)
+        r0_cut = where(r0 > 0.4)
+
 
         s0_idx, r0_idx = numpy.meshgrid(s0_cut, r0_cut)
 
@@ -1136,16 +1137,16 @@ class SOSanalyze(DCVizPlotter):
 
         Z = C[s0_idx, r0_idx]
 
-        colormap = cm.Greens
+        colormap = cm.hot
 
         ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=colormap, linewidth=0)
 
         zdir = "x"
-        offset = ax.get_xlim()[0]
+        offset = -0.5
 
         cset = ax.contour(X, Y, Z, zdir=zdir, offset=offset*1.05, color='#008000')
 
-        ax.set_xbound(0)
+        ax.set_xlim(-0.5, s0[s0_cut].max()*1.1)
         ax.set_zlim(0, Z.max())
 
         ax.set_xlabel(r"$\sigma_0$")
@@ -1158,30 +1159,52 @@ class SOSanalyze(DCVizPlotter):
         # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
         # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
 
+        start = 0
+
         r0_mean = C.sum(axis=0)/len(s0)
-        r0_mean = r0_mean[r0_cut]
+        r0_mean = r0_mean[r0_cut][start:]
 
-        r0 = r0[r0_cut]
+        r0 = r0[r0_cut][start:]
 
-        r0_mean /= r0
-
-        self.mean_figure.plot(r0, r0_mean)
+        self.mean_figure.plot(r0, r0_mean, 'ks', fillstyle="none")
         self.mean_figure.set_xbound(0)
+        self.mean_figure.set_xlabel(r"$r_0$")
+        self.mean_figure.set_ylabel(r"$g(r_0)$")
+        self.figure.suptitle(r"%s" % dirname.split("_")[1])
+
 
         from scipy.optimize import curve_fit
 
-        f = lambda x, a, b: a/(x + b)
+        f_full = lambda x, a, b, c: a/(x*(exp(float(b)/x) - c))
+        f = lambda x, a, b, c: f_full(x, 1, b, 1)
 
-        popt, pcov = curve_fit(f, r0, r0_mean, p0=(1., 1.))
+        popt, pcov = curve_fit(f, r0, r0_mean, p0=(1., 1., 1.))
 
-        a, b= popt
+        a, b, c = popt
+        print a, b, c
 
         f = np.vectorize(f)
 
-        self.mean_figure.plot(r0, f(r0, a, b))
+        r0_vec = linspace(r0[0], r0[-1])
+        self.mean_figure.plot(r0_vec, f(r0_vec, a, b, c), 'r--')
 
-        print a, b, a-b
+        self.figure_2.suptitle(r"$\mathrm{%s}\quad \lambda = %g$" % (dirname.split("_")[1], b))
 
+
+        #
+        # f_iter = lambda x : ((x*b + 1)*exp(1./x) - 1)/(a+b)
+        #
+        # x0 = 1
+        #
+        # eps = 1E-4
+        # n = 0
+        #
+        # while x0 > eps and n < 10000:
+        #     x0 = f_iter(x0)
+        #     n += 1
+        #
+        # print "found solution x0=%g with value %g" % (x0, f(x0, a, b))
+        #
 
 
 
@@ -1402,7 +1425,7 @@ class s_vs_eb_blocked(DCVizPlotter):
     def plot(self, data):
 
         s, err = data
-        err *= 100
+        err *= 1
 
         alphas = []
         for name in self.skippedCols[0]:
@@ -1419,15 +1442,22 @@ class s_vs_eb_blocked(DCVizPlotter):
                                 fillstyle='none',
                                 markersize=5)
 
-        self.subfigure.axes.errorbar(alphas, s,
-                                     yerr=err,
-                                     fmt='s',
-                                     fillstyle='none',
-                                     label="$\mathrm{KMC}$",
-                                     markersize=7,
-                                     markeredgewidth=1.5,
-                                     linewidth=1,
-                                     color="black")
+        # self.subfigure.axes.errorbar(alphas, s,
+        #                              yerr=err,
+        #                              fmt='s',
+        #                              fillstyle='none',
+        #                              label="$\mathrm{KMC}$",
+        #                              markersize=7,
+        #                              markeredgewidth=1.5,
+        #                              linewidth=1,
+        #                              color="black")
+
+        self.subfigure.plot(alphas, s, 'ks',
+                             fillstyle='none',
+                             label="$\mathrm{KMC}$",
+                             markersize=7,
+                             markeredgewidth=1.5,
+                             linewidth=1)
 
         self.subfigure.legend()
 
@@ -1435,6 +1465,106 @@ class s_vs_eb_blocked(DCVizPlotter):
         self.subfigure.set_ylabel(r"$\langle E \rangle / L$")
         self.subfigure.set_xlim(0, max(alphas))
         self.subfigure.set_ylim(0, max(s)*1.2)
+
+class Quasi2D_slopes_and_stuff(DCVizPlotter):
+
+    nametag = "linearplots\_(.*)\_?\d*\.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    figMap = {"fig" : "gammaslopes", "fig2" : "E0slopes"}
+
+    hugifyFonts = True
+
+    def n_runs(self):
+
+        n_max = -1
+
+        for name in self.familyFileNames:
+            if not "alpha" in name:
+                continue
+
+            n = int(re.findall("linearplots_alpha_(\d+)\.npy", name)[0])
+
+            if n > n_max:
+                n_max = n
+
+        return n_max + 1
+
+
+    def plot(self, data):
+
+        N = 3
+        shapes = ["s", "^", "v"]
+
+        n_runs = self.n_runs()
+
+        E0s = data[self.get_family_index_from_name("linearplots_E0.npy")].data
+        slopes = data[self.get_family_index_from_name("linearplots_slopes.npy")].data
+
+        n_plots = 0
+        errors = []
+        for n in range(n_runs):
+
+            alpha_name = "linearplots_alpha_%d.npy" % n
+            mu_name = "linearplots_muEqs_%d.npy" % n
+
+            alphas = data[self.get_family_index_from_name(alpha_name)].data
+            mus = data[self.get_family_index_from_name(mu_name)].data
+
+            a, b, c, d, err = linregress(alphas, mus)
+
+            errors.append(err)
+
+            if n%(n_runs/(N-1)) != 0:
+                continue
+            print n, n_plots
+
+            mu_error_name = "linearplots_muEqErrors_%d.npy" % n
+
+            mu_errors = data[self.get_family_index_from_name(mu_error_name)].data
+
+            self.gammaslopes.errorbar(alphas, mus,
+                                      yerr=mu_errors,
+                                      fmt=shapes[n_plots],
+                                      fillstyle='none',
+                                      label=r"$|E_0|/L=%1.2f$" % (E0s[n]),
+                                      markersize=7,
+                                      markeredgewidth=1.5,
+                                      linewidth=1,
+                                      color="black")
+            self.gammaslopes.plot([0, alphas.max()], [0, slopes[n]*alphas.max()], "r--")
+
+            n_plots += 1
+
+        self.gammaslopes.set_xbound(0)
+        self.gammaslopes.set_ybound(0)
+        self.gammaslopes.legend(loc="upper left")
+
+        self.gammaslopes.set_xlabel(r"$\alpha$")
+        self.gammaslopes.set_ylabel(r"$\gamma_\mathrm{eq}$")
+
+        self.E0slopes.errorbar(E0s, slopes,
+                               yerr=errors,
+                               fmt="s",
+                               fillstyle='none',
+                               markersize=7,
+                               markeredgewidth=1.5,
+                               linewidth=1,
+                               color="black")
+
+        sslope, a, b, c, d = linregress(E0s, slopes)
+
+        self.E0slopes.plot([0, E0s.max()], [0, sslope*E0s.max()], 'r--')
+        self.E0slopes.set_xbound(0)
+        self.E0slopes.set_ylim(0, sslope*E0s.max()*1.05)
+
+        self.E0slopes.set_xlabel(r"$|E_0|/L$")
+        self.E0slopes.set_ylabel(r"$\frac{\partial}{\partial \alpha}\gamma_\mathrm{eq}$")
+
+        print sslope, d
 
 
 class IGNIS_EVENTS(DCVizPlotter):

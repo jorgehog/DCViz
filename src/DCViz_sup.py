@@ -125,7 +125,8 @@ class DCVizPlotter:
     transparent = False
  
     hugifyFonts = False
-    labelSize= 20
+    labelSize= 25
+    ticklabelSize=20
     fontSize = 20  # Only invoked by hugifyFonts = True
     tickSize = 2
     
@@ -765,8 +766,13 @@ class DCVizPlotter:
 
 
     def saveFigs(self):
-            
-        path, fname = os.path.split(self.filepath)
+
+        if self.isFamilyMember:
+            filepath = pjoin(self.familyHome, self.familyHead)
+        else:
+            filepath = self.filepath
+
+        path, fname = os.path.split(filepath)
         
         dirname = "DCViz_out"
         dirpath = pjoin(path, dirname)
@@ -790,8 +796,8 @@ class DCVizPlotter:
         
     def hugify(self):
         rcParams['font.size'] = self.fontSize
-        rcParams['xtick.labelsize'] = self.labelSize
-        rcParams['ytick.labelsize'] = self.labelSize
+        rcParams['xtick.labelsize'] = self.ticklabelSize
+        rcParams['ytick.labelsize'] = self.ticklabelSize
         
 #        rcParams['ytick.major.size'] = self.tickSize
 #        rcParams['ytick.major.width'] = self.tickSize
