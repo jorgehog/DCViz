@@ -1514,6 +1514,11 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
 
     def plot(self, data):
 
+        meta_data_file = os.path.join(self.familyHome, "linearplots_metadata.dat")
+
+        with open(meta_data_file, 'r') as meta_data:
+            print meta_data.read()
+
         N = 3
         shapes = ["s", "^", "v"]
 
@@ -1583,6 +1588,61 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
         self.E0slopes.set_ylabel(r"$\frac{\partial}{\partial \alpha}\gamma_\mathrm{eq}$")
 
         print sslope, d
+
+class SOS_pressure_sizes(DCVizPlotter):
+
+    nametag = "pressure_plots_.*\.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+        N = 3
+        shapes = ["s", "^", "v"]
+
+
+        E0_array = data[self.get_family_index_from_name("pressure_plots_E0.npy")].data
+        alphas = data[self.get_family_index_from_name("pressure_plots_alphas.npy")].data
+        mean_s = data[self.get_family_index_from_name("pressure_plots_mean_s.npy")].data
+        var_s = data[self.get_family_index_from_name("pressure_plots_var_s.npy")].data
+
+        print E0_array.shape, alphas.shape, mean_s.shape, var_s.shape
+
+        analytical_path = os.path.join("/tmp", "boltzmann_ascii256.arma")
+        if os.path.exists(analytical_path):
+            analytical = numpy.loadtxt(analytical_path)
+            self.subfigure.plot(analytical[:, 0], analytical[:, 1], 'r-',
+                                linewidth=3,
+                                label="$\mathrm{Analytical}$",
+                                fillstyle='none',
+                                markersize=5)
+
+        for i, E0_value in enumerate(E0_array):
+
+
+            if i%(len(E0_array)/(N-1)) != 0:
+                continue
+
+            alpha_array = alphas[i, :]
+            mean_s_array = mean_s[i, :]
+            var_s_array = var_s[i, :]
+
+
+            self.subfigure.plot(alpha_array, mean_s_array, 'ks',
+                                 fillstyle='none',
+                                 label="$E_0 = %g$" % E0_value,
+                                 markersize=7,
+                                 markeredgewidth=1.5,
+                                 linewidth=1)
+
+        self.subfigure.set_xbound(alpha_array.min()*0.9)
+        self.subfigure.legend()
+
+
 
 
 class IGNIS_EVENTS(DCVizPlotter):
