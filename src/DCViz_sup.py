@@ -432,6 +432,7 @@ class DCVizPlotter:
         s = ""
         i = 0
         self.figures = []
+        self.figure_names = []
         
         if self.makeGif:
             self.savedImages = []
@@ -441,7 +442,7 @@ class DCVizPlotter:
         
         for fig in self.figMap.keys():
             s += "self.%s = plab.figure(); " % fig
-            s += "self.i%s = self.add_figure(self.%s); " % (fig, fig)
+            s += "self.i%s = self.add_figure(self.%s, '%s'); " % (fig, fig, fig)
         
             subFigs = self.figMap[fig]
             
@@ -783,7 +784,7 @@ class DCVizPlotter:
         i = 0
         for fig in zip(*self.figures)[0]:
             
-            figname = ".".join(fname.split(".")[0:-1]) + "_" + str(i) + ".png"
+            figname = ".".join(fname.split(".")[0:-1]) + "_" + self.figure_names[i] + ".png"
             figpath = pjoin(dirpath, figname)
             fig.savefig(figpath, transparent=self.transparent)
 
@@ -808,8 +809,9 @@ class DCVizPlotter:
         rcParams['axes.labelsize'] = self.labelSize
         rcParams['axes.titlesize'] = self.labelSize
 
-    def add_figure(self, fig):
+    def add_figure(self, fig, figname):
         self.figures.append([fig])
+        self.figure_names.append(figname)
         self.nFig += 1
         return len(self.figures) - 1
         

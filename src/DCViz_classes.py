@@ -1599,12 +1599,13 @@ class SOS_pressure_sizes(DCVizPlotter):
 
     hugifyFonts = True
 
-    figMap = {"fig" : "subfigure", "fig2" : "subfigure2", "fig3" : "subfigure3"}
+    figMap = {"sfig" : "subfigure", "varfig" : "subfigure2", "cvfig" : "subfigure3"}
 
     def plot(self, data):
 
-        N = 3
-        shapes = ["s", "^", "v"]
+        p = 2
+
+        shapes = ["s", "^", "o"]
 
 
         E0_array = data[self.get_family_index_from_name("pressure_plots_E0.npy")].data
@@ -1622,16 +1623,16 @@ class SOS_pressure_sizes(DCVizPlotter):
                                 label="$E_0 = 0$",
                                 fillstyle='none',
                                 markersize=5)
-            # self.subfigure2.plot(analytical[:, 0], analytical[:, 2], 'r-',
-            #                     linewidth=3,
-            #                     label="$E_0 = 0$",
-            #                     fillstyle='none',
-            #                     markersize=5)
-            # self.subfigure3.plot(analytical[:, 0], analytical[:, 0]**2*analytical[:, 2], 'r-',
-            #                     linewidth=3,
-            #                     label="$E_0 = 0$",
-            #                     fillstyle='none',
-            #                     markersize=5)
+            self.subfigure2.plot(analytical[:, 0], analytical[:, 2], 'r-',
+                                linewidth=3,
+                                label="$E_0 = 0$",
+                                fillstyle='none',
+                                markersize=5)
+            self.subfigure3.plot(analytical[:, 0], analytical[:, 0]**p*analytical[:, 2], 'r-',
+                                linewidth=3,
+                                label="$E_0 = 0$",
+                                fillstyle='none',
+                                markersize=5)
 
 
         nplots = 0
@@ -1645,6 +1646,7 @@ class SOS_pressure_sizes(DCVizPlotter):
             mean_s_array = mean_s[i, :]
             var_s_array = var_s[i, :]
 
+            alpha_array, mean_s_array, var_s_array = [np.array(x) for x in zip(*sorted(zip(alpha_array, mean_s_array, var_s_array), key=lambda x: x[0]))]
 
             self.subfigure.plot(alpha_array, mean_s_array, 'k%s' % shapes[nplots],
                                  fillstyle='none',
@@ -1660,7 +1662,7 @@ class SOS_pressure_sizes(DCVizPlotter):
                      markeredgewidth=1.5,
                      linewidth=1)
 
-            self.subfigure3.plot(alpha_array, var_s_array*alpha_array**2, 'k%s' % shapes[nplots],
+            self.subfigure3.plot(alpha_array, var_s_array*alpha_array**p, 'k%s' % shapes[nplots],
                      fillstyle='none',
                      label="$E_0 = %g$" % E0_value,
                      markersize=7,
@@ -1671,9 +1673,28 @@ class SOS_pressure_sizes(DCVizPlotter):
 
         self.subfigure.set_xlabel(r"$\alpha$")
         self.subfigure.set_ylabel(r"$\langle s \rangle / L$")
-
+        ax = self.subfigure.axes.twinx()
+        ax.set_ylabel(r"$\langle E \rangle /E_bL$")
+        ax.yaxis.set_ticklabels([])
         self.subfigure.set_xbound(0)
-        self.subfigure.legend()
+        self.subfigure.legend(numpoints=1, handlelength=1)
+
+
+        self.subfigure2.set_xlabel(r"$\alpha$")
+        self.subfigure2.set_ylabel(r"$\sigma (s) / L$")
+        ax2 = self.subfigure2.axes.twinx()
+        ax2.set_ylabel(r"$\sigma (E) / E_bL$")
+        ax2.yaxis.set_ticklabels([])
+        self.subfigure2.set_xbound(0)
+        self.subfigure2.legend(numpoints=1, handlelength=1)
+
+        self.subfigure3.set_xlabel(r"$\alpha$")
+        self.subfigure3.set_ylabel(r"$\alpha^2\sigma(s)^2$")
+        ax3 = self.subfigure3.axes.twinx()
+        ax3.set_ylabel(r"$C_V/k$")
+        ax3.yaxis.set_ticklabels([])
+        self.subfigure3.set_xbound(0)
+        self.subfigure3.legend(numpoints=1, handlelength=1, loc="upper left")
 
 
 
