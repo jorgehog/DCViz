@@ -207,9 +207,13 @@ class DCVizPlotter:
         familyHome, self.familyHead = os.path.split(self.filepath)
             
         if not familyHome:
-            self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
-            self.Exit()
-        
+
+            if self.useGUI:
+                self.Error("Single file name given as path. DCViz needs the absolute file path to work with families.")
+                self.Exit()
+            else:
+                familyHome = os.getcwd()
+
         familyNames = [name for name in os.listdir(familyHome)\
                         if re.findall(self.nametag, name) and os.path.exists(pjoin(familyHome, name)) and "tmp" not in name]
        

@@ -1111,9 +1111,9 @@ class SOSanalyze(DCVizPlotter):
 
     hugifyFonts = True
 
-    figMap = {"figure" : "subfigure", "figure_2" : "mean_figure"}
+    figMap = {"dasd": "asd", "s0_figure" : "ss", "figure" : "subfigure", "figure_2" : "mean_figure"}
 
-    def stuff(self, data, dirname, label):
+    def stuff(self, data, dirname, label, shadowdata):
         print dirname
 
         C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
@@ -1122,12 +1122,38 @@ class SOSanalyze(DCVizPlotter):
 
         r0_mean = C.sum(axis=0)/len(s0)
 
+        alpha = shadowdata.keys()
+        mu0 = [shadowdata[a] for a in alpha]
+
+        slope, a, b, c, d = linregress(alpha, mu0)
+
+        r0_mean = 1/(1/r0_mean - slope)
+
         self.mean_figure.plot(r0, r0_mean, "k^", label=label, linewidth=3,
                                 fillstyle='none',
                                 markeredgewidth=1.5,
-                                markersize=5)
+                                markersize=7)
+
+
+        self.asd.plot(alpha, mu0, 'ks')
+
 
     def plot(self, data):
+
+        sys.path.append("/home/jorgehog/code/Deux-kMC/scripts")
+
+        from parse_h5_output import ParseKMCHDF5
+
+
+        shadow_data_path = "/tmp/spiralgrowth_0.h5"
+        shadowparser = ParseKMCHDF5(shadow_data_path)
+
+        shadow_data = {}
+        for shadowstuff in shadowparser:
+            alpha = shadowstuff[3]
+            _data = shadowstuff[-1]
+
+            shadow_data[alpha] = _data.attrs["muEq"]
 
         dirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead)[0]
 
@@ -1164,12 +1190,14 @@ class SOSanalyze(DCVizPlotter):
         ax.set_zlim(0, Z.max())
 
         ax.set_xlabel(r"$\sigma_0$")
-        ax.set_ylabel(r"$r_0$")
-        ax.view_init(30, -65)
+        ax.set_ylabel(r"$\lambda_D$")
+        ax.view_init(15, -50)
+        ax.set_zticks([0, 0.2, 0.4, 0.6, 0.8])
 
         self.subfigure.axes.contourf(X, Y, Z, zdir='z', cmap=colormap)
         self.subfigure.set_xlabel(r"$\sigma_0$")
-        self.subfigure.set_ylabel(r"$r_0$", rotation=0)
+        self.subfigure.set_ylabel(r"$\lambda_D$", rotation=0)
+        self.subfigure.set_ybound(0)
         # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
         # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
 
@@ -1178,31 +1206,22 @@ class SOSanalyze(DCVizPlotter):
 
         r0_fit = r0[r0_cut]
 
+        for i, s0_value in enumerate(s0):
+            self.ss.plot(r0, C[i, :], label=r"$\sigma_0 = %.2f$" % s0_value)
 
-        if "noshadow" in dirname:
-            label="basic"
-            otherlabel="shadowing"
 
-            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("noshadow", "shadow"))[0]
+        s0_min = s0.min()
+        s0_max = s0.max()
+        width = 2
+        height = 0.5
 
-        else:
-            label="shadowing"
-            otherlabel="basic"
+        bbox_props = dict(boxstyle="square", fc="white", ec="k", lw=3)
+        t = self.ss.text(s0_max-width, height, r"$\sigma_0 \in [%g, %g]$" %(s0_min, s0_max),size=self.labelSize, bbox=bbox_props)
 
-            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("shadow", "noshadow"))[0]
+        self.ss.set_ylim([0, 1])
+        self.ss.set_xlabel(r"$\lambda_D$")
+        self.ss.set_ylabel(r"$g(\lambda_D)$")
 
-        try:
-            self.stuff(data, otherdirname, otherlabel)
-
-        except:
-            print "error loading: ", otherdirname
-
-        self.mean_figure.plot(r0, r0_mean, 'ks',
-                              label=label,
-                              linewidth=3,
-                              fillstyle='none',
-                              markersize=5,
-                              markeredgewidth=1.5)
 
         from scipy.optimize import curve_fit
 
@@ -1216,11 +1235,40 @@ class SOSanalyze(DCVizPlotter):
 
         f = np.vectorize(f)
 
-        self.mean_figure.plot(r0, f(r0, a, b, c), "r-", label="analytical")
-        self.mean_figure.legend(loc="lower right")
+        self.mean_figure.plot(r0, f(r0, a, b, c), "r-", label="Analytical", linewidth=3)
 
-        self.mean_figure.set_xlabel(r"$r_0$")
-        self.mean_figure.set_ylabel(r"$g(r_0)$")
+        if "noshadow" in dirname:
+            label="Basic"
+            otherlabel="Shadowing"
+
+            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("noshadow", "shadow"))[0]
+
+        else:
+            label="Shadowing"
+            otherlabel="Basic"
+
+            otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("shadow", "noshadow"))[0]
+
+        self.mean_figure.plot(r0, r0_mean, 'ks',
+                              label=label,
+                              linewidth=1,
+                              fillstyle='none',
+                              markersize=7,
+                              markeredgewidth=1.5)
+
+
+       # try:
+        self.stuff(data, otherdirname, otherlabel, shadow_data)
+
+        #except:
+         #   print "error loading: ", otherdirname
+
+
+
+        self.mean_figure.legend(loc="lower right",numpoints=1, handlelength=1)
+
+        self.mean_figure.set_xlabel(r"$\lambda_D$")
+        self.mean_figure.set_ylabel(r"$g(\lambda_D)$")
         self.mean_figure.set_xbound(0)
         self.mean_figure.set_ybound(0)
 
@@ -1257,21 +1305,22 @@ class shifts(DCVizPlotter):
         print std
 
         # self.subfigure.plot(-shifts,'^', label="shifts")
-        self.subfigure.plot(values, "k--s",
+        self.subfigure.plot([0 for i in range(len(values))], 'r--', linewidth=3, label=r"$\gamma_\mathrm{eq}$")
+
+        self.subfigure.plot(values, "ks",
                             markersize=7,
                             markeredgewidth=1.5,
                             linewidth=1,
-                            label="values",
+                            label=r"$\gamma_\mathrm{KMC}$",
                             fillstyle="none")
 
-        self.subfigure.plot([0 for i in range(len(values))], 'r--', linewidth=3, label="exact")
         self.subfigure.axes.set_xticks(range(cut + 1))
 
         self.subfigure.set_xlabel(r"$k$")
-        self.subfigure.set_ylabel(r"$\gamma_k$")
+        self.subfigure.set_ylabel(r"$\gamma$")
         self.subfigure.axes.set_xlim(-0.1, cut)
         self.subfigure.axes.set_ylim(-0.05, 1.1)
-        # self.subfigure.legend()
+        self.subfigure.legend(numpoints=1, handlelength=0.9)
 
         # zoomfac = len(values)/2
         #
@@ -1525,14 +1574,18 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
         n_runs = self.n_runs()
 
         E0s = data[self.get_family_index_from_name("linearplots_E0.npy")].data
-        slopes = data[self.get_family_index_from_name("linearplots_slopes.npy")].data
+        idxmap = range(len(E0s))
 
+        E0s, idxmap = [array(x) for x in zip(*sorted(zip(E0s, idxmap), key=lambda x:x[0]))]
+
+        slopes = data[self.get_family_index_from_name("linearplots_slopes.npy")].data[idxmap]
+        print E0s
         n_plots = 0
         errors = []
         for n in range(n_runs):
 
-            alpha_name = "linearplots_alpha_%d.npy" % n
-            mu_name = "linearplots_muEqs_%d.npy" % n
+            alpha_name = "linearplots_alpha_%d.npy" % idxmap[n]
+            mu_name = "linearplots_muEqs_%d.npy" % idxmap[n]
 
             alphas = data[self.get_family_index_from_name(alpha_name)].data
             mus = data[self.get_family_index_from_name(mu_name)].data
@@ -1553,7 +1606,7 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
                                       yerr=mu_errors,
                                       fmt=shapes[n_plots],
                                       fillstyle='none',
-                                      label=r"$|E_0|/L=%1.2f$" % (E0s[n]),
+                                      label=r"$F_0/L=%1.2f$" % (E0s[n]),
                                       markersize=7,
                                       markeredgewidth=1.5,
                                       linewidth=1,
@@ -1567,7 +1620,7 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
         self.gammaslopes.legend(loc="upper left")
 
         self.gammaslopes.set_xlabel(r"$\alpha$")
-        self.gammaslopes.set_ylabel(r"$\gamma_\mathrm{eq}$")
+        self.gammaslopes.set_ylabel(r"$\gamma_\mathrm{eq} - \gamma_0$")
 
         self.E0slopes.errorbar(E0s, slopes,
                                yerr=errors,
@@ -1584,8 +1637,8 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
         self.E0slopes.set_xbound(0)
         self.E0slopes.set_ylim(0, sslope*E0s.max()*1.05)
 
-        self.E0slopes.set_xlabel(r"$|E_0|/L$")
-        self.E0slopes.set_ylabel(r"$\frac{\partial}{\partial \alpha}\gamma_\mathrm{eq}$")
+        self.E0slopes.set_xlabel(r"$F_0/L$")
+        self.E0slopes.set_ylabel(r"$K(F_0/L)$")
 
         print sslope, d
 

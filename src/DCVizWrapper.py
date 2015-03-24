@@ -115,10 +115,15 @@ def mainToFile(path):
         if os.path.isfile(path):
             path, name = os.path.split(path)
             name_set = True
+
+            if not path:
+                path = os.getcwd()
+
         else:
             raise Exception("Supplied path must be to a directory or file.")
     
     modes = autodetectModes()
+    print path
     for root, dirs, files in os.walk(path):
     
         init = True    
