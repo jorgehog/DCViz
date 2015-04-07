@@ -19,7 +19,17 @@ def terminalTracker(head, msg):
     print "[%s] %s" % (head.center(10), msg)
 
 def is_DCViz_file(file):
-    return file.endswith(".py")
+    if not file.endswith(".py"):
+        return False
+
+    with open(file, 'r') as f:
+        for line in f:
+            if line.strip() == "#DCVIZ":
+                return True
+            elif not (line.startswith("#") or line.strip() == ""):
+                break
+
+    return False
 
 def already_loaded(class_files, file):
     for class_file in class_files:
@@ -45,7 +55,7 @@ def load_class_files():
             for file in os.listdir(path):
                 filepath = os.path.join(path, file)
                 if os.path.isfile(filepath):
-                    if is_DCViz_file(file):
+                    if is_DCViz_file(filepath):
                         if not already_loaded(class_files, filepath):
                             class_files.append(filepath)
 
