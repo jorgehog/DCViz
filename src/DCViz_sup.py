@@ -8,64 +8,173 @@ from matplotlib import rcParams
 from os.path import join as pjoin
 from random import shuffle
 
-class dataGenerator:
-    def __init__(self, data):
-        self.data = data
-        
-        if len(data.shape) == 2:
-            self.n, self.m = data.shape
-            self.getD = self.get2Ddata
-        elif len(data.shape) == 3:
-            self.n, self.m, self.l = data.shape
-            self.getD = self.get3Ddata
+class DCVizLoader(object):
+
+    def __init__(self):
+        self.plotter = None
+        self.skippedCols = []
+        self.skippedRows = []
+
+    def get_metadata(self):
+        return None
+
+    def set_plotter_instance(self, instance):
+        self.plotter = instance
+
+    def load(self, file):
+        raise RuntimeError("Load method is not implemented")
+
+class RawAscii(DCVizLoader):
+
+    def __init__(self, dtype=numpy.float):
+        self.dtype = dtype
+
+        super(RawAscii, self).__init__()
+
+    def sniffer(self, sample):
+
+        sampleList = [row.split() for row in sample.split("\n")]
+
+        #If user has specified the number of rows to skip
+        if self.plotter.skipRows is not None:
+            return self.skipRows, len(sampleList[0])
+
+        nLast = len(sampleList[-1])
+        i = len(sampleList) - 1
+
+        if nLast != len(sampleList[-2]):
+            nLast = len(sampleList[-2])
+            i -= 1
+
+        while len(sampleList[i]) == nLast and i >= 0:
+            i -= 1
+
+        #(nRows to skip = i+1, nCols = nLast)
+        return i+1, nLast
+
+    def get_dims(self, file):
+        self.plotter.skipRows, self.plotter.Ncols = self.sniffer(self.plotter.sample)
+
+        if (self.plotter.skipRows == 0):
+            self.plotter.skipRows = None
+
+
+    def load(self, file):
+        self.get_dims(file)
+
+        data = []
+
+        for i in range(self.plotter.skipRows):
+            self.skippedRows.append(file.readline())
+
+        for line in file:
+            split = line.split()
+            data.append(split[self.plotter.skipCols:])
+            self.skippedCols.append(split[:self.plotter.skipCols])
+
+        if self.plotter.skipCols != 0:
+            self.skippedCols = zip(*self.skippedCols)
+
+        return numpy.array(data, dtype=self.dtype)
+
+    def get_metadata(self):
+        return self.skippedCols, self.skippedRows
+
+class Numpy(DCVizLoader):
+    def load(self, file):
+        return numpy.load(file)
+
+class Armadillo(DCVizLoader):
+
+    def load(self, file):
+        armaFormat = file.readline()
+
+        dims = tuple([int(d) for d in file.readline().strip().split()])
+
+        if 0 in dims:
+            print "Zero dimension array loaded.", dims
+            return []
+
+        if "IS004" in armaFormat:
+            dtype = numpy.int32
         else:
-            self.m, = data.shape
-            self.n = 1
-            self.getD = self.get1Ddata
-        
-        self.shape = data.shape
-        self.fullshape = (self.n, self.m)
-        self.size = data.size
+            dtype = numpy.float64
 
-    def get1Ddata(self, i):
-        if i == slice(0, 9223372036854775807, None):
-            return self.data
-        elif i == 0:
-            return self.data
-        elif i == slice(0, 1, None):
-            return self.data
+        data = numpy.fromfile(file, dtype=dtype).transpose()
+
+        if len(dims) == 2:
+
+            _data = numpy.zeros(dims)
+            for i in range(dims[1]):
+                _data[:, i] = data[i*dims[0]:(i+1)*dims[0]]
+
+            data = _data
+
+        data.resize(dims)
+
+        return data
+
+class BinaryWithHeader(DCVizLoader):
+
+    default_binary_header_types = {4: 'i', 8: 'd'}
+
+    def __init__(self, binary_header_bit_sizes, n_cols_header_index=None, binary_header_types=None):
+
+        self.binary_header_bit_sizes = binary_header_bit_sizes
+        self.binary_header_types = binary_header_types
+        self.n_cols_header_index=n_cols_header_index
+
+        self.binary_header = []
+
+        super(BinaryWithHeader, self).__init__()
+
+    def get_metadata(self):
+        return self.binary_header
+
+    def load_header(self, file):
+
+        self.binary_header = []
+
+        offset = 0
+        for i, size in enumerate(self.binary_header_bit_sizes):
+
+            if self.binary_header_types:
+                bintype = self.binary_header_types[i]
+            else:
+                bintype = self.default_binary_header_types[size]
+
+            self.binary_header.append(struct.unpack(bintype, file.read(size))[0])
+
+            offset += size
+
+
+    def load(self, file):
+
+        self.load_header(file)
+
+        data = numpy.fromfile(file, dtype=numpy.float64)
+
+        if self.n_cols_header_index:
+            m = self.binary_header[self.n_cols_header_index]
         else:
-            raise IndexError("Index out of bounds.")
-    
-    def get3Ddata(self, i):
-        raise NotImplementedError()
+            m = self.plotter.Ncols
 
-    def get2Ddata(self, i):
-        return self.data[:, i]
+        n = int(data.size/m)
 
-    def __iter__(self):
+        data.resize(n, m)
 
-        for i in range(self.m):
-            yield self.getD(i)
+        return data
 
-    def __len__(self):
-        return self.n
+class Binary(BinaryWithHeader):
 
-    def __getitem__(self, i):
-        return self.getD(i)
+    def __init__(self):
+        super(Binary, self).__init__([])
 
-    def __str__(self):
-        return str(self.data)
+class Ignis(BinaryWithHeader):
 
-    def __add__(self, other):
-            
-        if isinstance(other, dataGenerator):
-            return self.data + other.data
-        else:        
-            raise NotImplementedError("add/sub only works for two datasets. Use 'sum([sum(d) for d in data])'")
+    def __init__(self):
+        super(Ignis, self).__init__([4,4],n_cols_header_index=1)
 
-    def __sub__(self, other):    
-            return self.data + (-other.data)
 
 
 class DCVizPlotter:
@@ -75,22 +184,18 @@ class DCVizPlotter:
     
     nametag = None
 
-    armaBin = False
-    numpyBin = False    
-    fileBin = False
-    
+    loader = None
+    loader_ending_map = {"arma" : Armadillo,
+                         "npy" : Numpy,
+                         "ign" : Ignis}
+
     path = None
     filename = None
     filepath = None
-    
-    binaryHeaderBitSizes = None
-    binaryHeader = None
-    nColsFromHeaderLoc = None
-    binaryHeaderTypes = None
-    defaultBinaryHeaderTypes = {4: 'i', 8: 'd'}
-    
+
     Ncols = None
-    transpose = False    
+    sample = None
+    transpose = False
     
     isFamilyMember = False
     familyName = None
@@ -104,18 +209,12 @@ class DCVizPlotter:
     smartIncrement = True
     originalFilename = None
 
-
-    skippedRows = []
-    skippedCols = []
     skipCols = 0
     skipRows = None
     
     nFig = 0
-
     delay = 3
-
     parent = None
-    
     stack = "V"
     
     canStart = False
@@ -141,7 +240,6 @@ class DCVizPlotter:
 
     anyNumber = r'[\+\-]?\d+\.?\d*[eE]?[\+\-]?\d*|[\+\-]?nan|[\+\-]?inf'    
 
-    
     def __init__(self, filepath=None, dynamic=False, useGUI=False, toFile=False, threaded=False):
 
         if not self.familyName:
@@ -178,10 +276,6 @@ class DCVizPlotter:
         if not (threaded or useGUI) and dynamic:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
-        
-        if self.Ncols is None and self.fileBin and not (self.binaryHeaderBitSizes and self.nColsFromHeaderLoc):
-            self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
-            self.Exit()
 
     def signal_handler(self, signal, frame):
         print "[%s] Ending session..." % "DCViz".center(10)
@@ -302,11 +396,8 @@ class DCVizPlotter:
                 
                 
             else:
-                
-                self.familySkippedRows = []
 
-                if self.fileBin and self.binaryHeaderBitSizes:
-                    self.familyHeaders = []
+                self.family_loader_data = []
 
                 data = [0]*N
                 self.familyFileNames = [0]*len(data)     
@@ -320,46 +411,58 @@ class DCVizPlotter:
                     
                     data[i] = self.get_data(setUpFamily=False)
                     
-                    if self.skipRows:
-                        self.familySkippedRows.append(self.skippedRows)
-                    
-                    if self.fileBin and self.binaryHeaderBitSizes:
-                        self.familyHeaders.append(self.binaryHeader)
-
-    
+                    self.family_loader_data.append(self.loader.get_metadata())
 
                     
             self.file.close()
             return data
-            
+
+        if self.loader is None:
+
+            #If we have a name like .arma og .npy or .ign then we automatically select the loader
+            ending = self.filepath.split(".")[-1]
+
+            if ending in self.loader_ending_map.keys():
+                self.loader = self.loader_ending_map[ending]()
+            else:
+                self.loader = RawAscii()
+
         data = []
+
         #attempt to reload file untill data is found.
         t0 = time.time()
         while len(data) == 0:
 
             self.reload()
 
-            if self.armaBin:
-                data = self.unpackArmaMatBin(self.file)
-            elif self.fileBin:
-                data = self.unpackBinFile(self.file)
-            elif self.numpyBin:
-                data = self.unpackNumpyBin(self.file)
-            else:
-                data = []
 
-                for line in self.file:
-                    split = line.split()
-                    data.append(split[self.skipCols:])
-                    self.skippedCols.append(split[:self.skipCols])
 
-                if self.skipCols != 0:
-                    self.skippedCols = zip(*self.skippedCols)
+            # if self.armaBin:
+            #     loader = Armadillo()
+            #     # data = self.unpackArmaMatBin(self.file)
+            # elif self.fileBin:
+            #     loader = BinaryWithHeader(self.binaryHeaderBitSizes, self.nColsFromHeaderLoc, self.binaryHeaderTypes)
+            #     # data = self.unpackBinFile(self.file)
+            # elif self.numpyBin:
+            #     loader = Numpy()
+            #     # data = self.unpackNumpyBin(self.file)
+            # else:
+            #     loader = RawAscii()
+            #     # data = []
+            #     #
+            #     # for line in self.file:
+            #     #     split = line.split()
+            #     #     data.append(split[self.skipCols:])
+            #     #     self.skippedCols.append(split[:self.skipCols])
+            #     #
+            #     # if self.skipCols != 0:
+            #     #     self.skippedCols = zip(*self.skippedCols)
+            #     #
+            #     # data = numpy.array(data, dtype=numpy.float)
 
-                data = numpy.array(data, dtype=numpy.float)
-
-#                data = numpy.array(self.rx.findall(self.file.read()), numpy.float)
-                data = data if self.transpose else data.transpose()
+            self.loader.set_plotter_instance(self)
+            data = self.loader.load(self.file)
+            data = data if self.transpose else data.transpose()
 
 
             if time.time() - t0 > 10.0:
@@ -369,8 +472,15 @@ class DCVizPlotter:
                return
                
         self.file.close()
-        
-        return dataGenerator(data)
+
+        #In case of vectors we get rid of the wrapping array
+        if data.size != 1 and len(data.shape) != 1:
+            if len(data) == 1:
+                data = data[0]
+            elif data.shape[1] == 1:
+                data = data[:, 0]
+
+        return data
     
     def unpackNumpyBin(self, binFile):
         
@@ -390,7 +500,7 @@ class DCVizPlotter:
         
         data.resize(n, m)
         
-        return data if not self.transpose else data.transpose()
+        return data
             
     
     def unpackArmaMatBin(self, armaFile):   
@@ -418,12 +528,8 @@ class DCVizPlotter:
                 
             data = _data
 
-        if self.transpose:
-            data.resize(dims)
-            data = data.transpose()
-        else:
-            data.resize(dims)
-        
+        data.resize(dims)
+
         return data
     
     def set_figures(self):
@@ -566,12 +672,11 @@ class DCVizPlotter:
                 
     def mainloop(self, argv=[]):
         self.argv = argv
-        
-        if not self.armaBin:
-            breakMe = self.waitForGreenLight()
-            
-            if breakMe:
-                return
+
+        breakMe = self.waitForGreenLight()
+
+        if breakMe:
+            return
 
         if self.hugifyFonts:
             self.hugify()
@@ -651,8 +756,7 @@ class DCVizPlotter:
                 print "[%s] A filename needs to be supplied in order to save figures to file." % "DCViz".center(10)
         else:
             self.filepath = self.filepath.strip(".png")
-        data = dataGenerator(data)
-        
+
         self.manageFigures()
         self.plot(data)
         self.showFigures()
@@ -669,52 +773,37 @@ class DCVizPlotter:
         
         self.reload()
   
-        sample = self.file.read()
+        self.sample = self.file.read()
         
-        if not sample:
+        if not self.sample:
             self.Error("No data in file...")
             return "red"
-            
-        if self.fileBin:
+        else:
             return "green"
-            
-        self.skipRows, self.Ncols = self.sniffer(sample) 
-        
-        if (self.skipRows == 0):
-            self.skipRows = None
-        
-        self.file.seek(0)        
 
-        if self.skipRows:
-            
-            self.skippedRows = []
-            for i in range(self.skipRows):
-                self.skippedRows.append(self.file.readline().strip())
-      
-      
-        return "green"
-        
-    
-    def sniffer(self, sample):
-        
-        sampleList = [row.split() for row in sample.split("\n")]
- 
-        #If user has specified the number of rows to skip
-        if self.skipRows is not None:
-            return self.skipRows, len(sampleList[0])
+        self.file.seek(0)
 
-        nLast = len(sampleList[-1])
-        i = len(sampleList) - 1
-
-        if nLast != len(sampleList[-2]):
-            nLast = len(sampleList[-2])
-            i -= 1
-        
-        while len(sampleList[i]) == nLast and i >= 0:
-            i -= 1
-
-        #(nRows to skip = i+1, nCols = nLast)
-        return i+1, nLast    
+    #
+    # def sniffer(self, sample):
+    #
+    #     sampleList = [row.split() for row in sample.split("\n")]
+    #
+    #     #If user has specified the number of rows to skip
+    #     if self.skipRows is not None:
+    #         return self.skipRows, len(sampleList[0])
+    #
+    #     nLast = len(sampleList[-1])
+    #     i = len(sampleList) - 1
+    #
+    #     if nLast != len(sampleList[-2]):
+    #         nLast = len(sampleList[-2])
+    #         i -= 1
+    #
+    #     while len(sampleList[i]) == nLast and i >= 0:
+    #         i -= 1
+    #
+    #     #(nRows to skip = i+1, nCols = nLast)
+    #     return i+1, nLast
     
     def recursiveSafeLoad(self, depth, maxDepth):
         
@@ -742,32 +831,26 @@ class DCVizPlotter:
                 self.file.close()
 
         self.recursiveSafeLoad(0, 3)
-   
-        self.skippedRows = []
-        if not self.armaBin and self.skipRows is not None:        
-            for i in range(self.skipRows):
-                self.skippedRows.append(self.file.readline().strip())
 
-                        
-        if self.fileBin and self.binaryHeaderBitSizes:
-            self.binaryHeader = []
-            offset = 0
-            for i, size in enumerate(self.binaryHeaderBitSizes):
-                
-                if self.binaryHeaderTypes:
-                    bintype = self.binaryHeaderTypes[i]
-                else:
-                    bintype = self.defaultBinaryHeaderTypes[size]
-
-                try:
-                    self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
-                except struct.error:
-                    return
-
-                offset += size
-            
-            if self.nColsFromHeaderLoc:
-                self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
+        # if self.fileBin and self.binaryHeaderBitSizes:
+        #     self.binaryHeader = []
+        #     offset = 0
+        #     for i, size in enumerate(self.binaryHeaderBitSizes):
+        #
+        #         if self.binaryHeaderTypes:
+        #             bintype = self.binaryHeaderTypes[i]
+        #         else:
+        #             bintype = self.defaultBinaryHeaderTypes[size]
+        #
+        #         try:
+        #             self.binaryHeader.append(struct.unpack(bintype, self.file.read(size))[0])
+        #         except struct.error:
+        #             return
+        #
+        #         offset += size
+        #
+        #     if self.nColsFromHeaderLoc:
+        #         self.Ncols = self.binaryHeader[self.nColsFromHeaderLoc]
 
 
     def saveFigs(self):
