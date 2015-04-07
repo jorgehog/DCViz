@@ -165,6 +165,7 @@ class DCVizPlotter:
         self.end_seq = False
         
         self.figures = []
+        self.argv = []
         
         self.filepath = filepath
         self.file = None
@@ -181,9 +182,7 @@ class DCVizPlotter:
         if self.Ncols is None and self.fileBin and not (self.binaryHeaderBitSizes and self.nColsFromHeaderLoc):
             self.Error("You need to specify the number of cols 'Ncols' in order to read a binary file.")
             self.Exit()
-        
-    
-    
+
     def signal_handler(self, signal, frame):
         print "[%s] Ending session..." % "DCViz".center(10)
         self.SIGINT_CAPTURED = True
@@ -565,7 +564,8 @@ class DCVizPlotter:
             if self.ziggyMagicNumber < 1:
                 self.ziggyMagicNumber = 1
                 
-    def mainloop(self):
+    def mainloop(self, argv=[]):
+        self.argv = argv
         
         if not self.armaBin:
             breakMe = self.waitForGreenLight()
@@ -863,5 +863,3 @@ class DCVizPlotter:
     
     def plot(self, data):
         raise NotImplementedError("Plot function must be implemented for a DCViz instance.")
-    
-    

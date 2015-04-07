@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, os, re, time, inspect
+import sys, os, re, time, inspect, imp
 
 try:
     from PySide.QtCore import *
@@ -28,7 +28,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 srcDir = os.path.join(os.path.dirname(thisDir), "src")
 sys.path.append(srcDir)
-import DCViz_classes
+all_dcviz_modules = []
 
 from DCVizWrapper import autodetectModes
 
@@ -51,7 +51,7 @@ class jobThread(QThread):
     def run(self):
         self.mode.canStart = False
         self.mode.stopped = False
-        self.mode.mainloop()
+        self.mode.mainloop(argv=self.mode.parent.parent.arg_text_field.text().split())
             
     def stop(self):
         self.mode.stopped = True
@@ -110,7 +110,10 @@ class DCVizGUI(QMainWindow):
 
     def __init__(self, masterDir, initpos = None):
 
-        reload(DCViz_classes)
+        global all_dcviz_modules
+
+        for modname, modpath in all_dcviz_modules:
+            module = imp.load_source(modname, modpath)
 
         super(DCVizGUI, self).__init__()
 
@@ -229,7 +232,7 @@ class DCVizGUI(QMainWindow):
         #::::::::::::::::::::::::::::::::::::::::::::::::::
     
         #  DynamicCheckBox ::::::::::::::::::::::::::::::::
-        self.dynamicCheckBox = QCheckBox("Real-time", self)
+        self.dynamicCheckBox = QCheckBox("Dynamic", self)
         self.dynamicCheckBox.stateChanged.connect(self.flipDynamic)
         #::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -249,7 +252,7 @@ class DCVizGUI(QMainWindow):
         self.dtSlider.sliderReleased.connect(lambda : self.updateDt(True))
        
         
-        self.sliderUnit = QLabel("<font size=3>s</font>", self)
+        #self.sliderUnit = QLabel("<font size=3>s</font>", self)
         
         self.sliderDisplay = QLineEdit(self)
         self.sliderDisplay.setReadOnly(True)
@@ -261,41 +264,46 @@ class DCVizGUI(QMainWindow):
         else:
             initVal = str(self.refreshDtConfig)
         self.sliderDisplay.clear()
-        self.sliderDisplay.insert(str(initVal))
+        self.sliderDisplay.insert(str(initVal) + "s")
 
         #init as disabled
         self.dtSlider.setEnabled(False)
         self.sliderDisplay.setEnabled(False)
-        self.sliderUnit.setEnabled(False)
+        #self.sliderUnit.setEnabled(False)
         #::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
         #  GUI Setup ::::::::::::::::::::::::::::::::::::::
-        size = (300, 150)
+        size = (300, 100)
         buttonSize = QSize(50,50)
         
         self.setGeometry(*(self.initpos+size))
 
         self.startStopButton.resize(buttonSize)
         self.startStopButton.setIconSize(buttonSize)
-        self.startStopButton.move(30,40)
+        self.startStopButton.move(30,15)
 
 
         self.modeSelector.resize(QSize(165,25))
-        self.modeSelector.move(110,53)
+        self.modeSelector.move(110,15)
+
+        self.arg_text_field = QLineEdit(self)
+        self.arg_text_field.resize(QSize(125, 25))
+        self.arg_text_field.move(150, 40)
+        self.argv_label = QLabel("<font size=3>Argv:</font>", self)
+        self.argv_label.move(112, 37)
+
+        self.dynamicCheckBox.move(5, size[1]-30)
 
 
-        self.dynamicCheckBox.move(20, size[1] - 50)
-
-
-        self.dtSlider.resize(QSize(size[0]-55, 20))
-        self.dtSlider.move(0, size[1]-20)
+        self.dtSlider.resize(QSize(size[0]-155, 20))
+        self.dtSlider.move(95, size[1]-23)
         
-        self.sliderDisplay.resize(QSize(30, 20))
-        self.sliderDisplay.move(size[0]-52, size[1]-20)
+        self.sliderDisplay.resize(QSize(40, 20))
+        self.sliderDisplay.move(size[0]-50, size[1]-23)
         
-        self.sliderUnit.resize(QSize(20, 15))
-        self.sliderUnit.move(size[0]-20, size[1]-18)
+        # self.sliderUnit.resize(QSize(20, 15))
+        # self.sliderUnit.move(size[0]-20, size[1]-23)
 
         self.show()
         #::::::::::::::::::::::::::::::::::::::::::::::::::   
@@ -327,7 +335,14 @@ class DCVizGUI(QMainWindow):
         for mode in self.modeMap.values():
             win.detectModetype(mode.filepath)
         win.updateModeSelector()
+        win.modeSelector.setCurrentIndex(self.modeSelector.currentIndex())
+
         win.setWindowTitle('DCViz GUI')
+
+        win.arg_text_field.setText(self.arg_text_field.text())
+
+        if self.dynamic:
+            win.dynamicCheckBox.setCheckState(Qt.Checked)
 
     def reload_classes(self):
 
@@ -493,7 +508,7 @@ class DCVizGUI(QMainWindow):
         self.dynamic = not self.dynamic
         self.dtSlider.setEnabled(self.dynamic)
         self.sliderDisplay.setEnabled(self.dynamic)
-        self.sliderUnit.setEnabled(self.dynamic)  
+        #self.sliderUnit.setEnabled(self.dynamic)
 
 
     def updateDt(self, updateConfig):
@@ -504,7 +519,7 @@ class DCVizGUI(QMainWindow):
         if (int(newDt) - newDt) == 0:
             newDt = int(newDt)
             
-        self.sliderDisplay.insert(str(newDt))
+        self.sliderDisplay.insert(str(newDt) + "s")
   
         
         if not updateConfig:
@@ -520,26 +535,35 @@ class DCVizGUI(QMainWindow):
         
 
     def autodetectModes(self):
-        classfile = open(os.path.join(srcDir, 'DCViz_classes.py'), 'r')
-        raw = classfile.read()
-        classfile.close()
 
-        self.uniqueModesNames = re.findall('^class (\w+)\(DCVizPlotter\):', raw, re.MULTILINE)
-        self.uniqueModes = [eval("DCViz_classes." + subclass) for subclass in self.uniqueModesNames]
-        
-        self.terminalTracker("Detector", "Found subclasses %s" \
-                                % str(self.uniqueModesNames).strip("]").strip("["))
-        
-        if not self.uniqueModesNames:
-            self.raiseWarning("No subclass implementations found.")
+        global all_dcviz_modules
 
-        for mode in self.uniqueModes:
-            instance = mode()
-            try:
-                nametag = instance.nametag
-            except:
-                self.raiseWarning("Subclass %s has no attribute 'nametag' (output filename identifier)." % \
-                                  self.uniqueModesNames[self.uniqueModes.index(mode)])
+        self.uniqueModes, self.uniqueModesNames, modules = autodetectModes()
+
+        for module in modules:
+            if module not in all_dcviz_modules:
+                all_dcviz_modules.append(module)
+
+        # classfile = open(os.path.join(srcDir, 'DCViz_classes.py'), 'r')
+        # raw = classfile.read()
+        # classfile.close()
+        #
+        # self.uniqueModesNames = re.findall('^class (\w+)\(DCVizPlotter\):', raw, re.MULTILINE)
+        # self.uniqueModes = [eval("DCViz_classes." + subclass) for subclass in self.uniqueModesNames]
+        #
+        # self.terminalTracker("Detector", "Found subclasses %s" \
+        #                         % str(self.uniqueModesNames).strip("]").strip("["))
+        #
+        # if not self.uniqueModesNames:
+        #     self.raiseWarning("No subclass implementations found.")
+        #
+        # for mode in self.uniqueModes:
+        #     instance = mode()
+        #     try:
+        #         nametag = instance.nametag
+        #     except:
+        #         self.raiseWarning("Subclass %s has no attribute 'nametag' (output filename identifier)." % \
+        #                           self.uniqueModesNames[self.uniqueModes.index(mode)])
 
     
     def updateModeSelector(self, silent=False):

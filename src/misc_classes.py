@@ -1100,6 +1100,65 @@ class ebs_s(DCVizPlotter):
         self.subfigure.set_ylabel(r"$\langle s\rangle/L$")
         self.subfigure.legend()
 
+class lalatest(DCVizPlotter):
+
+    nametag = "lala.*.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+        t = data[self.get_family_index_from_name("lalatime.npy")].data
+        rms = data[self.get_family_index_from_name("lalarms.npy")].data
+
+        self.subfigure.plot(t, rms)
+
+class GrowthSpeed(DCVizPlotter):
+
+    nametag = "growthspeed\_(.*)\.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    def plot(self, data):
+
+
+        E0_values = data[self.get_family_index_from_name("growthspeed_E0.npy")].data
+        alpha_values = data[self.get_family_index_from_name("growthspeed_alpha.npy")].data
+        mu_shift_values = data[self.get_family_index_from_name("growthspeed_mu_shift.npy")].data
+        v_values = data[self.get_family_index_from_name("growthspeed_v.npy")].data
+
+        V = []
+
+        marks = ["s--", "^--", "v--"]
+
+        count = 0
+        for i, E0 in enumerate(E0_values):
+            V.append([])
+            for j, alpha in enumerate(alpha_values):
+                for k, mu_shift in enumerate(mu_shift_values):
+                    if j == 2:
+                        V[i].append(v_values[count])
+
+                    count += 1
+
+            c_over_ceq = exp(mu_shift_values)
+            self.subfigure.plot(c_over_ceq-1, c_over_ceq*V[i], "--" + marks[i], label="E0/L=%g" % E0)
+        self.subfigure.plot(c_over_ceq - 1, 0.87*(c_over_ceq - 1), "k-", linewidth=2, label="E0/L=0")
+        om = np.linspace(c_over_ceq.min(), c_over_ceq.max()) - 1
+        # self.subfigure.plot(om, 0.01*om*(exp(om*1.01) - 1))
+        self.subfigure.set_xlabel(r"$\Omega$")
+        self.subfigure.set_ylabel(r"$\langle v\rangle$")
+        self.subfigure.legend(loc="lower right")
+
+
 
 class SOSanalyze(DCVizPlotter):
 
@@ -1111,49 +1170,29 @@ class SOSanalyze(DCVizPlotter):
 
     hugifyFonts = True
 
-    figMap = {"dasd": "asd", "s0_figure" : "ss", "figure" : "subfigure", "figure_2" : "mean_figure"}
+    figMap = {"s0_figure" : "ss", "figure" : "subfigure", "figure_2" : "mean_figure"}
 
-    def stuff(self, data, dirname, label, shadowdata):
+    def stuff(self, data, dirname, label, cut):
         print dirname
 
         C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
         s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)].data
         r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
 
-        r0_mean = C.sum(axis=0)/len(s0)
+        r0_mean = C.sum(axis=0)/len(s0)*self.scale(r0)
 
-        alpha = shadowdata.keys()
-        mu0 = [shadowdata[a] for a in alpha]
-
-        slope, a, b, c, d = linregress(alpha, mu0)
-
-        r0_mean = 1/(1/r0_mean - slope)
-
-        self.mean_figure.plot(r0, r0_mean, "k^", label=label, linewidth=3,
+        self.mean_figure.plot(r0, self.convert(r0_mean), "k^", label=label, linewidth=3,
                                 fillstyle='none',
                                 markeredgewidth=1.5,
                                 markersize=7)
 
+    def scale(self, r0):
+        return 1./(r0*(1-exp(-1./r0)))
 
-        self.asd.plot(alpha, mu0, 'ks')
-
+    def convert(self, data):
+        return 1./data - 1
 
     def plot(self, data):
-
-        sys.path.append("/home/jorgehog/code/Deux-kMC/scripts")
-
-        from parse_h5_output import ParseKMCHDF5
-
-
-        shadow_data_path = "/tmp/spiralgrowth_0.h5"
-        shadowparser = ParseKMCHDF5(shadow_data_path)
-
-        shadow_data = {}
-        for shadowstuff in shadowparser:
-            alpha = shadowstuff[3]
-            _data = shadowstuff[-1]
-
-            shadow_data[alpha] = _data.attrs["muEq"]
 
         dirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead)[0]
 
@@ -1201,7 +1240,7 @@ class SOSanalyze(DCVizPlotter):
         # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
         # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
 
-        r0_mean = C.sum(axis=0)/len(s0)
+        r0_mean = C.sum(axis=0)/len(s0)*self.scale(r0)
         r0_mean_fit = r0_mean[r0_cut]
 
         r0_fit = r0[r0_cut]
@@ -1235,7 +1274,7 @@ class SOSanalyze(DCVizPlotter):
 
         f = np.vectorize(f)
 
-        self.mean_figure.plot(r0, f(r0, a, b, c), "r-", label="Analytical", linewidth=3)
+        self.mean_figure.plot(r0, self.convert(f(r0, a, b, c)*self.scale(r0)), "r-", label="Analytical", linewidth=3)
 
         if "noshadow" in dirname:
             label="Basic"
@@ -1249,7 +1288,7 @@ class SOSanalyze(DCVizPlotter):
 
             otherdirname = re.findall("analyze\_(.+)\_.+\_values\.npy", self.familyHead.replace("shadow", "noshadow"))[0]
 
-        self.mean_figure.plot(r0, r0_mean, 'ks',
+        self.mean_figure.plot(r0, self.convert(r0_mean), 'ks',
                               label=label,
                               linewidth=1,
                               fillstyle='none',
@@ -1258,7 +1297,7 @@ class SOSanalyze(DCVizPlotter):
 
 
        # try:
-        self.stuff(data, otherdirname, otherlabel, shadow_data)
+        self.stuff(data, otherdirname, otherlabel, 1)
 
         #except:
          #   print "error loading: ", otherdirname
@@ -1270,7 +1309,7 @@ class SOSanalyze(DCVizPlotter):
         self.mean_figure.set_xlabel(r"$\lambda_D$")
         self.mean_figure.set_ylabel(r"$g(\lambda_D)$")
         self.mean_figure.set_xbound(0)
-        self.mean_figure.set_ybound(0)
+        #self.mean_figure.set_ybound(0)
 
         print a, b, c
 
