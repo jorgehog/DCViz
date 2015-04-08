@@ -1,5 +1,6 @@
-
 # -*- coding: utf-8 -*-
+#DCVIZ
+
 import sys, re, os, inspect, datetime
 from re import findall as find
 
@@ -61,7 +62,7 @@ from mpl_toolkits.mplot3d import Axes3D
 classes_thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.append(classes_thisDir)
 
-from DCViz_sup import DCVizPlotter, dataGenerator
+from DCViz_sup import DCVizPlotter
 
 
 #==============================================================================
@@ -127,14 +128,8 @@ class myTestClassFamily(DCVizPlotter):
         mainFig.suptitle('I have $\LaTeX$ support!')        
         subfigs = self.figures[0][1:]
     
-        #Notice we plot fileData.data and not fileData alone.
-        #The dataGenerator class is used to speed up file reading;
-        #looping over family members and directly plotting means
-        #we send a dataGenerator instance to matplotlib.
-        #in order to get the numpy object, we send the data.
-        #Alternatively, we could send data[:]
         for subfig, fileData in zip(subfigs, data):
-            subfig.plot(fileData.data)
+            subfig.plot(fileData)
             subfig.set_ylim([-1,1])
         
 
@@ -149,8 +144,8 @@ class standardBinaryArmaVec(DCVizPlotter):
 
         N = len(data)        
         r = numpy.linspace(0.1, 6, N)
-        self.subfigure.plot(r, numpy.cumsum(data.data)*(6-0.1)/(N-1), 'b-^');
-        self.sf.plot(r, -data.data, 'b-^')
+        self.subfigure.plot(r, numpy.cumsum(data)*(6-0.1)/(N-1), 'b-^');
+        self.sf.plot(r, -data, 'b-^')
         self.sf.axes.set_xlabel("R")
         self.subfigure.axes.set_xlabel("R")
         self.sf.axes.set_ylabel("F")
@@ -174,18 +169,18 @@ class forces1D(DCVizPlotter):
 
         dr = (1 - all_dr)[::-1]
 
-        data.data = data.data[::-1]
+        data = data[::-1]
 
-        self.subfigure.plot(dr, data.data)
+        self.subfigure.plot(dr, data)
         self.subfigure.set_xlabel("compression")
         self.subfigure.set_ylabel("wall force")
 
-        self.figure.plot(dr, log(data.data))
+        self.figure.plot(dr, log(data))
         self.figure.set_xlabel("compression")
         self.figure.set_ylabel("log(wall force)")
 
-        b = len(data.data)/20
-        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data.data)[b:][:, 0])
+        b = len(data)/20
+        slope, intercept, rV, pV, stdErr = linregress(dr[b:], log(data)[b:][:, 0])
 
         print dr[b:]
         self.figure.plot(dr, slope*dr + intercept, "k", label="%s" % slope)
@@ -198,7 +193,7 @@ class hist_stuff(DCVizPlotter):
     armaBin = True
 
     def plot(self, data):
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data)
 
 class acf_height(DCVizPlotter):
 
@@ -208,7 +203,7 @@ class acf_height(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data/data.data.max())
+        self.subfigure.plot(data/data.max())
         self.subfigure.set_xlim(0, 30)
         self.subfigure.set_xlabel("dx")
         self.subfigure.set_ylabel("acf(dx)")
@@ -224,7 +219,7 @@ class SolidOnSolidHeights(DCVizPlotter):
     def plot(self, data):
         ax = Axes3D(self.fig3D)
 
-        hist = data.data - data.data.min() + 1
+        hist = data - data.min() + 1
 
         elements = data.n*data.m
 
@@ -239,35 +234,48 @@ class SolidOnSolidHeights(DCVizPlotter):
 
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, linewidth=0)
 
+class test_loader(DCVizPlotter):
+
+    nametag = "test\.txt"
+
+    skipCols = 1
+
+    def plot(self, data):
+        print self.loader.get_metadata()
+
+        x, y = data
+        self.subfigure.plot(x, y)
+
 
 
 class heighMap(DCVizPlotter):
 
     nametag = "heights\.arma"
 
-    armaBin = True
-
     def plot(self, data):
 
         fs = rcParams["figure.figsize"]
         ar = fs[1]/fs[0]
-        y_max = int(ar*data.n)
 
-        Z = data.data - data.data.min()
+        L = data.shape[0]
+
+        y_max = int(ar*L)
+
+        Z = data - data.min()
 
         if (y_max/2 > Z.max()):
             Z += y_max/2;
 
             for i, zi in enumerate(Z):
-                self.subfigure.scatter(i+0.5, zi, marker='s', color='r', s = 0.09*(data.n/fs[0])**2)
+                self.subfigure.scatter(i+0.5, zi, marker='s', color='r', s = 0.09*(L/fs[0])**2)
 
                 self.subfigure.set_ylim(0, y_max)
         else:
             self.subfigure.set_ybound(0)
 
-        self.subfigure.bar(arange(data.n), Z, width=1.0, linewidth=0)
+        self.subfigure.bar(arange(L), Z, width=1.0, linewidth=0)
 
-        self.subfigure.set_xlim(0, data.n-1)
+        self.subfigure.set_xlim(0, L-1)
 
 class testStuff(DCVizPlotter):
     
@@ -277,7 +285,7 @@ class testStuff(DCVizPlotter):
     
     def plot(self, data):
 
-        self.subfigure.plot(data.data, 'b*')
+        self.subfigure.plot(data, 'b*')
 
 
 class KMC_1D(DCVizPlotter):
@@ -442,7 +450,7 @@ class phreeqc_si(DCVizPlotter):
         lol = self.getRandomStyles()
     
         lol = ['r-*', 'g-+', 'b-^', 'b--x', 'r-o', 'k-x', 'g--^']
-        step, pH, pe, mg, F2, F3, H = data.data[:(3 + self.nTotals)]
+        step, pH, pe, mg, F2, F3, H = data[:(3 + self.nTotals)]
         step[0] = 0
         step = numpy.array(step)
         step *= self.coPrIt
@@ -460,7 +468,7 @@ class phreeqc_si(DCVizPlotter):
         
         k = self.nTotals        
         
-#        for k, _m in enumerate(data.data[3:3+self.nTotals]):
+#        for k, _m in enumerate(data[3:3+self.nTotals]):
 #            name = self.skippedRows[0].split()[8 + k]
 #            
 #            print _m, name
@@ -472,7 +480,7 @@ class phreeqc_si(DCVizPlotter):
 #            
 #        k += 1
         j = 0
-        for i, phase in enumerate(data.data[(4+k):][::2]):
+        for i, phase in enumerate(data[(4+k):][::2]):
 
             name = self.skippedRows[0].split()[8 + k + 2*i]    
 
@@ -500,7 +508,7 @@ class molecules(DCVizPlotter):
     
     def plot(self, data):
         
-        data = numpy.sum(data.data, axis=2)
+        data = numpy.sum(data, axis=2)
         
         n = data.shape[0]
 
@@ -629,7 +637,7 @@ class mdOutCpp(DCVizPlotter):
     
     def plot(self, data):
 
-        x, y = data.data
+        x, y = data
         
 
         _colors = ["r", '0.75']
@@ -786,7 +794,7 @@ class quick_conc(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data)
         self.subfigure.set_ybound(0)
 
 class quick_hist(DCVizPlotter):
@@ -798,9 +806,9 @@ class quick_hist(DCVizPlotter):
 
     def plot(self, data):
         
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data)
         self.subfigure.set_ybound(0)
-        self.sf2.plot(data.data)
+        self.sf2.plot(data)
 
 class WLMC_C(DCVizPlotter):
 
@@ -945,7 +953,7 @@ class logDOS_test(DCVizPlotter):
 
     def plot(self, data):
         s = arange(len(data))
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data)
 
 
 class QuasiLoadedIgnis20(DCVizPlotter):
@@ -959,8 +967,11 @@ class QuasiLoadedIgnis20(DCVizPlotter):
 
     figMap = {"fig1" : ["sfig", "hfig"]}
 
+    stack="H"
+
     def plot(self, data):
-        s, h = data
+
+        s, h, a, b, c, d, e = data
 
         self.sfig.plot(s)
         self.hfig.plot(h)
@@ -969,13 +980,7 @@ class QuasiLoadedIgnis(DCVizPlotter):
 
     nametag = "ignisQuasi2Dloaded.ign"
 
-    fileBin = True
-
-    binaryHeaderBitSizes = [4, 4]
-    nColsFromHeaderLoc = 1
-
     figMap = {"fig" : ["subfigure", "subfigure2", "subfigure3"], "fig2" : ["subfigure4"]}
-
 
     def plot(self, data):
 
@@ -1055,7 +1060,7 @@ class logmtvec(DCVizPlotter):
 
     def plot(self, data):
 
-        self.subfigure.plot(data.data)
+        self.subfigure.plot(data)
 
 
 class fit_scale(DCVizPlotter):
@@ -1066,7 +1071,7 @@ class fit_scale(DCVizPlotter):
 
     def plot(self, data):
 
-        im = self.subfigure.imshow(data.data)
+        im = self.subfigure.imshow(data)
         self.subfigure.set_xlabel("power")
         self.subfigure.set_ylabel("scale")
         self.figure.colorbar(im)
@@ -1100,6 +1105,33 @@ class ebs_s(DCVizPlotter):
         self.subfigure.set_ylabel(r"$\langle s\rangle/L$")
         self.subfigure.legend()
 
+class lalatest(DCVizPlotter):
+
+    nametag = "lala.*.npy"
+
+    numpyBin = True
+
+    isFamilyMember = True
+
+    hugifyFonts = True
+
+    figMap = {"s0_figure" : "ss", "figure" : "subfigure", "figure_2" : "mean_figure"}
+
+    def plot(self, data):
+
+        t = data[self.get_family_index_from_name("lalatime.npy")]
+        rms = data[self.get_family_index_from_name("lalarms.npy")]
+
+        self.subfigure.plot(t, rms)
+
+
+        self.mean_figure.plot(r0, np.log(r0_mean*self.scale(r0)), "k^", label=label, linewidth=3,
+                                fillstyle='none',
+                                markeredgewidth=1.5,
+                                markersize=7)
+
+    def scale(self, r0):
+        return 1./(r0*(1-exp(-1/r0)))
 
 class SOSanalyze(DCVizPlotter):
 
@@ -1116,19 +1148,19 @@ class SOSanalyze(DCVizPlotter):
     def stuff(self, data, dirname, label):
         print dirname
 
-        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
-        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)].data
-        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
+        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)]
+        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)]
+        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)]
 
-        r0_mean = C.sum(axis=0)/len(s0)
+        r0_mean = C.sum(axis=0)/len(s0)*self.scale(r0)
 
-        self.mean_figure.plot(r0, np.log(r0_mean*self.scale(r0)), "k^", label=label, linewidth=3,
+        self.mean_figure.plot(r0, np.log(r0_mean), "k^", label=label, linewidth=3,
                                 fillstyle='none',
                                 markeredgewidth=1.5,
                                 markersize=7)
 
     def scale(self, r0):
-        return 1./(r0*(1-exp(-1/r0)));
+        return 1./(r0*(1-exp(-1./r0)))
 
     def plot(self, data):
 
@@ -1136,19 +1168,16 @@ class SOSanalyze(DCVizPlotter):
 
         print dirname
 
-        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)].data
-        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)].data
-        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)].data
+        C =  data[self.get_family_index_from_name("analyze_%s_C_values.npy" % dirname)]
+        s0 =  data[self.get_family_index_from_name("analyze_%s_s0_values.npy" % dirname)]
+        r0 =  data[self.get_family_index_from_name("analyze_%s_r0_values.npy" % dirname)]
 
         s0_cut = where(s0 >= 0)
         r0_cut = where(r0 > 0.4)
 
-
         s0_idx, r0_idx = numpy.meshgrid(s0_cut, r0_cut)
 
-
         ax = Axes3D(self.figure)
-
 
         X, Y = numpy.meshgrid(s0[s0_cut], r0[r0_cut])
 
@@ -1179,14 +1208,13 @@ class SOSanalyze(DCVizPlotter):
         # self.subfigure.axes.get_yaxis().get_label().set_fontsize(20)
         # self.subfigure.axes.get_xaxis().get_label().set_fontsize(20)
 
-        r0_mean = C.sum(axis=0)/len(s0)
+        r0_mean = C.sum(axis=0)/len(s0)*self.scale(r0)
         r0_mean_fit = r0_mean[r0_cut]
 
         r0_fit = r0[r0_cut]
 
         for i, s0_value in enumerate(s0):
             self.ss.plot(r0, np.log(C[i, :]*self.scale(r0)), label=r"$\sigma_0 = %.2f$" % s0_value)
-
 
         s0_min = s0.min()
         s0_max = s0.max()
@@ -1213,7 +1241,8 @@ class SOSanalyze(DCVizPlotter):
 
         f = np.vectorize(f)
 
-        self.mean_figure.plot(r0, np.log(f(r0, a, b, c)*self.scale(r0)), "r-", label="Analytical", linewidth=3)
+
+        self.mean_figure.plot(r0, self.convert(f(r0, a, b, c)*self.scale(r0)), "r-", label="Analytical", linewidth=3)
 
         if "noshadow" in dirname:
             label="Basic"
@@ -1234,14 +1263,7 @@ class SOSanalyze(DCVizPlotter):
                               markersize=7,
                               markeredgewidth=1.5)
 
-
-       # try:
         self.stuff(data, otherdirname, otherlabel)
-
-        #except:
-         #   print "error loading: ", otherdirname
-
-
 
         self.mean_figure.legend(loc="upper right",numpoints=1, handlelength=1)
 
@@ -1250,8 +1272,6 @@ class SOSanalyze(DCVizPlotter):
         self.mean_figure.set_xbound(0)
 
         print a, b, c
-
-
 
 
 class shifts(DCVizPlotter):
@@ -1343,7 +1363,7 @@ class s_vs_eb_collapse(DCVizPlotter):
         for name, data in zip(self.familyFileNames, family_data):
 
             L = self.getNumberForSort(name)
-            ebs, s = data.data
+            ebs, s = data
 
             c = self.colors.next()
             m = self.markers.next()
@@ -1407,8 +1427,8 @@ class canonical_stuff(DCVizPlotter):
 
             fig = eval("self.%s" % self.conversion[which])
 
-            fig.plot(alphas.data, data.data, "r-", linewidth=3)
-            fig.axes.set_xticks(range(int(round(alphas.data.max())) + 1))
+            fig.plot(alphas, data, "r-", linewidth=3)
+            fig.axes.set_xticks(range(int(round(alphas.max())) + 1))
             fig.set_xlabel(r"$\alpha$")
             fig.set_ylabel(self.labels[which])
 
@@ -1550,12 +1570,12 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
 
         n_runs = self.n_runs()
 
-        E0s = data[self.get_family_index_from_name("linearplots_E0.npy")].data
+        E0s = data[self.get_family_index_from_name("linearplots_E0.npy")]
         idxmap = range(len(E0s))
 
         E0s, idxmap = [array(x) for x in zip(*sorted(zip(E0s, idxmap), key=lambda x:x[0]))]
 
-        slopes = data[self.get_family_index_from_name("linearplots_slopes.npy")].data[idxmap]
+        slopes = data[self.get_family_index_from_name("linearplots_slopes.npy")][idxmap]
         print E0s
         n_plots = 0
         errors = []
@@ -1564,8 +1584,8 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
             alpha_name = "linearplots_alpha_%d.npy" % idxmap[n]
             mu_name = "linearplots_muEqs_%d.npy" % idxmap[n]
 
-            alphas = data[self.get_family_index_from_name(alpha_name)].data
-            mus = data[self.get_family_index_from_name(mu_name)].data
+            alphas = data[self.get_family_index_from_name(alpha_name)]
+            mus = data[self.get_family_index_from_name(mu_name)]
 
             a, b, c, d, err = linregress(alphas, mus)
 
@@ -1577,7 +1597,7 @@ class Quasi2D_slopes_and_stuff(DCVizPlotter):
 
             mu_error_name = "linearplots_muEqErrors_%d.npy" % n
 
-            mu_errors = data[self.get_family_index_from_name(mu_error_name)].data
+            mu_errors = data[self.get_family_index_from_name(mu_error_name)]
 
             self.gammaslopes.errorbar(alphas, mus,
                                       yerr=mu_errors,
@@ -1638,10 +1658,10 @@ class SOS_pressure_sizes(DCVizPlotter):
         shapes = ["s", "^", "o"]
 
 
-        E0_array = data[self.get_family_index_from_name("pressure_plots_E0.npy")].data
-        alphas = data[self.get_family_index_from_name("pressure_plots_alphas.npy")].data
-        mean_s = data[self.get_family_index_from_name("pressure_plots_mean_s.npy")].data
-        var_s = data[self.get_family_index_from_name("pressure_plots_var_s.npy")].data
+        E0_array = data[self.get_family_index_from_name("pressure_plots_E0.npy")]
+        alphas = data[self.get_family_index_from_name("pressure_plots_alphas.npy")]
+        mean_s = data[self.get_family_index_from_name("pressure_plots_mean_s.npy")]
+        var_s = data[self.get_family_index_from_name("pressure_plots_var_s.npy")]
 
         print E0_array.shape, alphas.shape, mean_s.shape, var_s.shape
 
@@ -1806,9 +1826,9 @@ class molsim2(DCVizPlotter):
         
         chem, pres = data
         
-        self.subfigure.plot(chem.data[s:e], pres.data[s:e])
+        self.subfigure.plot(chem[s:e], pres[s:e])
         
-        for c, p, r in zip(chem.data[s:e], pres.data[s:e], rho[s:e]):
+        for c, p, r in zip(chem[s:e], pres[s:e], rho[s:e]):
             
             self.subfigure.text(c, p, str(r))
 
@@ -1894,7 +1914,7 @@ class EnergyTrail(DCVizPlotter):
         
         for i, data_ in enumerate(data):
             name = self.familyFileNames[i].split(".")[0].replace("_", " ")[1:]
-            self.eFig.plot(numpy.cumsum(data_.data)/numpy.linspace(1,data_.m,data_.m),
+            self.eFig.plot(numpy.cumsum(data_)/numpy.linspace(1,data_.m,data_.m),
                            self.l[i], c=self.c[i], label=name)
                            
         self.eFig.plot([1,data_.m], [eDMC, eDMC], 'k-.', label="DMC Energy")
@@ -1955,7 +1975,7 @@ class DMC_OUT(DCVizPlotter):
     transpose = True
     
     def plot(self, data):
-        print data.data.shape
+        print data.shape
         
         E, Eavg, N, Navg, ET = data
         
@@ -2085,11 +2105,11 @@ class radial_out(DCVizPlotter):
             edges.append(edge1)
             
         if "vmc" in self.familyFileNames[o] and "dmc" in self.familyFileNames[k]:
-            vmcDist = data[o].data
-            dmcDist = data[k].data
+            vmcDist = data[o]
+            dmcDist = data[k]
         elif "vmc" in self.familyFileNames[k] and "dmc" in self.familyFileNames[o]:
-            vmcDist = data[k].data
-            dmcDist = data[o].data
+            vmcDist = data[k]
+            dmcDist = data[o]
         else:
             raise RuntimeError("Matching distribution sets are not vmc dmc pairs.")
       
@@ -2117,11 +2137,11 @@ class radial_out(DCVizPlotter):
         else:
             label = "DMC"
             
-        self.radialFig.plot(r, data[n].data, self.style[i], color=self.color[i], label=label)
+        self.radialFig.plot(r, data[n], self.style[i], color=self.color[i], label=label)
 
 
         if not self.silent: print self.familyFileNames[n]
-        if not self.silent: print "n_p= ", data[n].data.sum()*edge/(data[n].n-1), "?"
+        if not self.silent: print "n_p= ", data[n].sum()*edge/(data[n].n-1), "?"
             
         
         return r[self.cut], edge
@@ -2152,7 +2172,7 @@ class dist_out(DCVizPlotter):
             if not silent: print "length 1 data"
             
             edge = float(re.findall("_edge(.+?)\.arma", self.familyFileNames[0])[0])
-            dist = data[0].data
+            dist = data[0]
             
         else:
 
@@ -2188,11 +2208,11 @@ class dist_out(DCVizPlotter):
                         print "Bin edges does not match. %s != %s" % (edge, edge_2)
     
                 if "vmc" in self.familyFileNames[o] and "dmc" in self.familyFileNames[k]:
-                    vmcDist = data[o].data
-                    dmcDist = data[k].data
+                    vmcDist = data[o]
+                    dmcDist = data[k]
                 elif "vmc" in self.familyFileNames[k] and "dmc" in self.familyFileNames[o]:
-                    vmcDist = data[k].data
-                    dmcDist = data[o].data
+                    vmcDist = data[k]
+                    dmcDist = data[o]
                 else:
                     raise RuntimeError("Matching distribution sets are not vmc dmc pairs.")
                 
@@ -2213,7 +2233,7 @@ class dist_out(DCVizPlotter):
             else:
                 if not silent: print "length 1 data"
                 
-                dist = data[o].data
+                dist = data[o]
         
         origLen = len(dist)
         distMid = dist[:, origLen/2]
