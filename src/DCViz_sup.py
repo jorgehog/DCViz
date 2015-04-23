@@ -24,6 +24,14 @@ class DCVizLoader(object):
     def load(self, file):
         raise RuntimeError("Load method is not implemented")
 
+    def load_from_path(self, path):
+
+        if not os.path.exists(path):
+            raise RuntimeError("Invalid path: %s" % path)
+
+        with open(path, 'r') as f:
+            return self.load(f)
+
 class RawAscii(DCVizLoader):
 
     def __init__(self, dtype=numpy.float):
@@ -295,6 +303,16 @@ class DCVizPlotter:
     def get_family_index_from_name(self, name):
         return self.familyFileNames.index(name)
 
+    def get_family_member_data(self, data, unique_name):
+        pattern = re.sub("\(.*\)", unique_name, self.nametag)
+
+        for family_name in self.familyFileNames:
+
+            if re.findall(pattern, family_name):
+                return data[self.get_family_index_from_name(family_name)]
+
+        raise RuntimeError("Name '%s' not found in family." % unique_name)
+
     def get_family(self):
         
         familyHome, self.familyHead = os.path.split(self.filepath)
@@ -462,7 +480,7 @@ class DCVizPlotter:
 
             self.loader.set_plotter_instance(self)
             data = self.loader.load(self.file)
-            data = data if self.transpose else data.transpose()
+            data = data if not self.transpose else data.transpose()
 
 
             if time.time() - t0 > 10.0:

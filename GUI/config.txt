@@ -1,7 +1,13 @@
-initial position = 1057 348
+initial position = 3834 407
 dynamic refresh interval [seconds] = 1.5
 terminal tracker = 1
 warnings on = 0
+
+
+
+
+
+
 
 
 
