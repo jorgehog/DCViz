@@ -11,11 +11,9 @@ DCViz::DCViz(string fileOrDir) :
 
 void DCViz::launchPython(std::string cmd)
 {
-
     Py_Initialize();
 
     PyRun_SimpleString(cmd.c_str());
 
     Py_Finalize();
-
 }
