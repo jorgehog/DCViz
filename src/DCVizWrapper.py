@@ -158,10 +158,7 @@ def getInstance(path, dynamic=False, toFile=False, threaded=False):
         
     return matchedMode(path, dynamic=dynamic, toFile=toFile, threaded=threaded)
 
-def main(path, app_argv, dynamic, delay = None, toFile=False, fs=None, silent=False, makeGif=False):
-
-    if fs:
-        pylab.rcParams['figure.figsize'] = fs
+def main(path, app_argv, dynamic, delay = None, toFile=False, silent=False, makeGif=False):
 
     instance = getInstance(path, dynamic=dynamic, toFile=toFile)
 
@@ -324,7 +321,11 @@ if __name__ == "__main__":
             print arg
         sys.exit(1)
 
+
+    if figSize:
+        matplotlib.rcParams['figure.figsize'] = figSize
+
     if toFile:
         mainToFile(path, app_argv)
     else:
-        main(path, app_argv, dynamic, delay=delay, fs=figSize, makeGif=makeGif)
+        main(path, app_argv, dynamic, delay=delay, makeGif=makeGif)

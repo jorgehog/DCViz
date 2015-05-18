@@ -244,13 +244,6 @@ class DCVizPlotter:
 
     tight = True
 
-    adjust_left = None
-    adjust_bottom = None
-    adjust_right = None
-    adjust_top = None
-    adjust_wspace = None
-    adjust_hspace = None
-
     markers = itertools.cycle(['*', 'o', '^', '+', 'x'])
     lines   = itertools.cycle(['-', '--'])
     colors  = itertools.cycle(['b', 'r', 'g', 'k', 'c'])
@@ -284,15 +277,25 @@ class DCVizPlotter:
         
         self.filepath = filepath
         self.file = None
-        
+
         self.toFile = toFile
         
         if self.loadSequential:
             self.nextInLine = 0
+
+        self.adjust_maps = {}
         
         if not (threaded or useGUI) and dynamic:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
+
+    def make_default_adjust_map(self):
+        return {"left" : None,
+                "bottom" : None,
+                "right" : None,
+                "top" : None,
+                "wspace" : None,
+                "hspace" : None}
 
     def signal_handler(self, signal, frame):
         print "[%s] Ending session..." % "DCViz".center(10)
@@ -556,6 +559,9 @@ class DCVizPlotter:
             self.figMap = {"figure": ["subfigure"]}
         
         for fig in self.figMap.keys():
+
+            self.adjust_maps[fig] = self.make_default_adjust_map()
+
             s += "self.%s = plab.figure(); " % fig
             s += "self.i%s = self.add_figure(self.%s, '%s'); " % (fig, fig, fig)
         
@@ -701,6 +707,8 @@ class DCVizPlotter:
 
         self.manageFigures()
         self.initFamily()
+
+        self.adjust()
 
         while self.shouldReplot():
 
@@ -925,17 +933,12 @@ class DCVizPlotter:
         return len(self.figures[i]) - 1
         
     def show(self, drawOnly=False):
-        for fig in self.figures:
+        for i, fig in enumerate(self.figures):
 
             if self.tight:
                 fig[0].tight_layout()
 
-            fig[0].subplots_adjust(left=self.adjust_left,
-                                   bottom=self.adjust_bottom,
-                                   right=self.adjust_right,
-                                   top=self.adjust_top,
-                                   wspace=self.adjust_wspace,
-                                   hspace=self.adjust_hspace)
+            self.adjust_figure(i, fig[0])
 
 #            try:
             fig[0].canvas.draw()
@@ -943,7 +946,13 @@ class DCVizPlotter:
 #                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)\nAlso check all your labels etc. for weird symbols or latex-expressions without assigned $-signs.")
             if not drawOnly:
                 fig[0].show()
-        
+
+    def adjust(self):
+        return
+
+    def adjust_figure(self, i, fig):
+        fig.subplots_adjust(**self.adjust_maps[self.figure_names[i]])
+
     def clear(self):
         for fig in self.figures:
             for subfig in fig[1:]:
