@@ -277,7 +277,7 @@ class DCVizPlotter:
         self.file = None
         
         self.toFile = toFile
-        
+
         if self.loadSequential:
             self.nextInLine = 0
         
@@ -943,7 +943,7 @@ class DCVizPlotter:
                 subfig.clear()
                 subfig.axes.clear()
                 subfig.axes.legend_ = None
-        
+
     def close(self):
         self.clear()
         
