@@ -72,8 +72,9 @@ class RawAscii(DCVizLoader):
 
         data = []
 
-        for i in range(self.plotter.skipRows):
-            self.skippedRows.append(file.readline())
+        if self.plotter.skipRows is not None:
+            for i in range(self.plotter.skipRows):
+                self.skippedRows.append(file.readline())
 
         for line in file:
             split = line.split()
@@ -224,6 +225,7 @@ class DCVizPlotter:
     delay = 3
     parent = None
     stack = "V"
+    share_axis = False
     
     canStart = False
     
@@ -263,7 +265,7 @@ class DCVizPlotter:
         
         self.dynamic = dynamic
         self.useGUI = useGUI
-        
+
         self.plotted = False
         self.stopped = False
         self.SIGINT_CAPTURED = False
@@ -275,15 +277,25 @@ class DCVizPlotter:
         
         self.filepath = filepath
         self.file = None
-        
+
         self.toFile = toFile
 
         if self.loadSequential:
             self.nextInLine = 0
+
+        self.adjust_maps = {}
         
         if not (threaded or useGUI) and dynamic:
             print "[  DCViz  ]", "Interrupt dynamic mode with CTRL+C"
             signal.signal(signal.SIGINT, self.signal_handler)
+
+    def make_default_adjust_map(self):
+        return {"left" : None,
+                "bottom" : None,
+                "right" : None,
+                "top" : None,
+                "wspace" : None,
+                "hspace" : None}
 
     def signal_handler(self, signal, frame):
         print "[%s] Ending session..." % "DCViz".center(10)
@@ -354,6 +366,8 @@ class DCVizPlotter:
     def get_data(self, setUpFamily):
 
         if setUpFamily:
+
+            resetLoader = self.loader is None
 
             familyMembers = self.get_family()
             
@@ -428,9 +442,11 @@ class DCVizPlotter:
                     self.familyFileNames[i] = os.path.basename(familyMembers[i])
                     
                     data[i] = self.get_data(setUpFamily=False)
-                    
+
                     self.family_loader_data.append(self.loader.get_metadata())
 
+                    if resetLoader:
+                        self.loader = None
                     
             self.file.close()
             return data
@@ -452,31 +468,6 @@ class DCVizPlotter:
         while len(data) == 0:
 
             self.reload()
-
-
-
-            # if self.armaBin:
-            #     loader = Armadillo()
-            #     # data = self.unpackArmaMatBin(self.file)
-            # elif self.fileBin:
-            #     loader = BinaryWithHeader(self.binaryHeaderBitSizes, self.nColsFromHeaderLoc, self.binaryHeaderTypes)
-            #     # data = self.unpackBinFile(self.file)
-            # elif self.numpyBin:
-            #     loader = Numpy()
-            #     # data = self.unpackNumpyBin(self.file)
-            # else:
-            #     loader = RawAscii()
-            #     # data = []
-            #     #
-            #     # for line in self.file:
-            #     #     split = line.split()
-            #     #     data.append(split[self.skipCols:])
-            #     #     self.skippedCols.append(split[:self.skipCols])
-            #     #
-            #     # if self.skipCols != 0:
-            #     #     self.skippedCols = zip(*self.skippedCols)
-            #     #
-            #     # data = numpy.array(data, dtype=numpy.float)
 
             self.loader.set_plotter_instance(self)
             data = self.loader.load(self.file)
@@ -555,7 +546,7 @@ class DCVizPlotter:
         if self.stack not in ["H", "V"]:
             self.Error("Invalid stack argument %s. (Choose either H or V)" % self.stack)
             self.Exit()
-        
+
         s = ""
         i = 0
         self.figures = []
@@ -568,6 +559,9 @@ class DCVizPlotter:
             self.figMap = {"figure": ["subfigure"]}
         
         for fig in self.figMap.keys():
+
+            self.adjust_maps[fig] = self.make_default_adjust_map()
+
             s += "self.%s = plab.figure(); " % fig
             s += "self.i%s = self.add_figure(self.%s, '%s'); " % (fig, fig, fig)
         
@@ -582,12 +576,24 @@ class DCVizPlotter:
             nFigs = len(subFigs)
             
             for j in range(nFigs):
-                
-                
-                if self.stack == "V":
-                    s += "self.%s = self.%s.add_subplot(%d, 1, %d); " % (subFigs[j], fig, nFigs, j+1)
+
+                if j == 0 or not self.share_axis:
+                    share_str = ""
                 else:
-                    s += "self.%s = self.%s.add_subplot(1, %d, %d); " % (subFigs[j], fig, nFigs, j+1)
+                    share_str = ", share__dim__=self.%s" % subFigs[0]
+
+                if self.stack == "V":
+                    s += "self.%s = self.%s.add_subplot(%d, 1, %d%s); " % (subFigs[j],
+                                                                                     fig,
+                                                                                     nFigs,
+                                                                                     j+1,
+                                                                                     share_str.replace("__dim__", "x"))
+                else:
+                    s += "self.%s = self.%s.add_subplot(1, %d, %d%s); " % (subFigs[j],
+                                                                                     fig,
+                                                                                     nFigs,
+                                                                                     j+1,
+                                                                                     share_str.replace("__dim__", "y"))
                 s += "self.add_subfigure(self.%s, self.i%s); " % (subFigs[j], fig)
             
             i += 1
@@ -701,6 +707,8 @@ class DCVizPlotter:
 
         self.manageFigures()
         self.initFamily()
+
+        self.adjust()
 
         while self.shouldReplot():
 
@@ -925,10 +933,12 @@ class DCVizPlotter:
         return len(self.figures[i]) - 1
         
     def show(self, drawOnly=False):
-        for fig in self.figures:
+        for i, fig in enumerate(self.figures):
 
             if self.tight:
                 fig[0].tight_layout()
+
+            self.adjust_figure(i, fig[0])
 
 #            try:
             fig[0].canvas.draw()
@@ -936,7 +946,13 @@ class DCVizPlotter:
 #                raise OSError("Unable to draw canvas! Missing dvips drivers? (sudo apt-get install dvips-fontdata-n2bk)\nAlso check all your labels etc. for weird symbols or latex-expressions without assigned $-signs.")
             if not drawOnly:
                 fig[0].show()
-        
+
+    def adjust(self):
+        return
+
+    def adjust_figure(self, i, fig):
+        fig.subplots_adjust(**self.adjust_maps[self.figure_names[i]])
+
     def clear(self):
         for fig in self.figures:
             for subfig in fig[1:]:
