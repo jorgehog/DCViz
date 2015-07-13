@@ -956,26 +956,6 @@ class logDOS_test(DCVizPlotter):
         self.subfigure.plot(data)
 
 
-class QuasiLoadedIgnis20(DCVizPlotter):
-
-    nametag = "ignisSOS.ign"
-
-    fileBin = True
-
-    binaryHeaderBitSizes = [4, 4]
-    nColsFromHeaderLoc = 1
-
-    figMap = {"fig1" : ["sfig", "hfig"]}
-
-    stack="H"
-
-    def plot(self, data):
-
-        s, h, a, b, c, d, e = data
-
-        self.sfig.plot(s)
-        self.hfig.plot(h)
-
 class QuasiLoadedIgnis(DCVizPlotter):
 
     nametag = "ignisQuasi2Dloaded.ign"
