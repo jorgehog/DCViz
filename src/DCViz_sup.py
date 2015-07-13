@@ -172,8 +172,7 @@ class BinaryWithHeader(DCVizLoader):
 
         data.resize(n, m)
 
-
-        return data
+        return data.transpose() #transpose changes only strides, no copies.
 
 class Binary(BinaryWithHeader):
 
