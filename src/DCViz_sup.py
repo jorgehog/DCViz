@@ -125,7 +125,7 @@ class Armadillo(DCVizLoader):
 
 class BinaryWithHeader(DCVizLoader):
 
-    default_binary_header_types = {4: 'i', 8: 'd'}
+    default_binary_header_types = {4: 'i', 8: 'd', -1: 'fullrow'}
 
     def __init__(self, binary_header_bit_sizes, n_cols_header_index=None, binary_header_types=None):
 
@@ -144,7 +144,6 @@ class BinaryWithHeader(DCVizLoader):
 
         self.binary_header = []
 
-        offset = 0
         for i, size in enumerate(self.binary_header_bit_sizes):
 
             if self.binary_header_types:
@@ -152,9 +151,10 @@ class BinaryWithHeader(DCVizLoader):
             else:
                 bintype = self.default_binary_header_types[size]
 
-            self.binary_header.append(struct.unpack(bintype, file.read(size))[0])
-
-            offset += size
+            if bintype == "fullrow":
+                self.binary_header.append(file.readline().strip("\n"))
+            else:
+                self.binary_header.append(struct.unpack(bintype, file.read(size))[0])
 
 
     def load(self, file):
@@ -172,7 +172,7 @@ class BinaryWithHeader(DCVizLoader):
 
         data.resize(n, m)
 
-        return data
+        return data.transpose() #transpose changes only strides, no copies.
 
 class Binary(BinaryWithHeader):
 
@@ -182,7 +182,7 @@ class Binary(BinaryWithHeader):
 class Ignis(BinaryWithHeader):
 
     def __init__(self):
-        super(Ignis, self).__init__([4,4],n_cols_header_index=1)
+        super(Ignis, self).__init__([-1,4,4],n_cols_header_index=2)
 
 
 
