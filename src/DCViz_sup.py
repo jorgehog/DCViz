@@ -97,8 +97,9 @@ class Armadillo(DCVizLoader):
 
     def load(self, file):
         armaFormat = file.readline()
+        dims_info = file.readline()
 
-        dims = tuple([int(d) for d in file.readline().strip().split()])
+        dims = tuple([int(d) for d in dims_info.strip().split()])
 
         if 0 in dims:
             print "Zero dimension array loaded.", dims
