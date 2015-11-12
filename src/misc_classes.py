@@ -322,7 +322,7 @@ class KMC_1D(DCVizPlotter):
       
 class concentrations(DCVizPlotter):
     
-    nametag = 'concOut.+?\.arma'
+    nametag = 'concOut(.+?)\.arma'
     
 #    figMap = {'fig' : ['sf_c', 'sf_CO2', 'sf_Ca', 'sf_mass', 'sf_cl', 'sf_ph']}
     figMap = {'fig' : ['sf_c'], 'fig2' : 'sf_CO2', 'fig3' : 'sf_Ca', 'fig6' : 'sf_mass', 'fig7' : 'sf_cl', 'fig8' : ['sf_ph']}
@@ -350,9 +350,7 @@ class concentrations(DCVizPlotter):
     isFamilyMember = True
     loadLatest = True
 #    loadSequential = True
-    
-    getNumberForSort = lambda _s, a: int(find("concOut(\d+?)\.arma", a)[0])
-    
+
     stack = "H"
     
     ziggyMagicNumber = 10000
@@ -410,6 +408,7 @@ class concentrations(DCVizPlotter):
         s = str(datetime.timedelta(seconds=__N*dt)).split(".")[0]
 #        s = str(__N)
         print s
+        print self.filepath
 #        if not self.txt:        
 #            self.txt = self.fig.suptitle(s)
 #        else:
