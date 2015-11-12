@@ -97,8 +97,9 @@ class Armadillo(DCVizLoader):
 
     def load(self, file):
         armaFormat = file.readline()
+        dims_info = file.readline()
 
-        dims = tuple([int(d) for d in file.readline().strip().split()])
+        dims = tuple([int(d) for d in dims_info.strip().split()])
 
         if 0 in dims:
             print "Zero dimension array loaded.", dims
@@ -226,11 +227,12 @@ class DCVizPlotter:
     parent = None
     stack = "V"
     share_axis = False
-    
+    plotOnly = []
+
     canStart = False
     
     gifLoopDelay = 0
-    
+
     transparent = False
  
     hugifyFonts = False
@@ -934,6 +936,11 @@ class DCVizPlotter:
         
     def show(self, drawOnly=False):
         for i, fig in enumerate(self.figures):
+
+            if len(self.plotOnly) != 0:
+                if self.figure_names[i] not in self.plotOnly:
+                    plab.close(fig[0])
+                    continue
 
             if self.tight:
                 fig[0].tight_layout()

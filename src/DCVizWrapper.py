@@ -275,7 +275,7 @@ if __name__ == "__main__":
 
         idx = dcviz_argv.index("-d")
 
-        if not idx == len(dcviz_argv):
+        if not idx == len(dcviz_argv) - 1:
             obj = eval(dcviz_argv[idx + 1])
             if type(obj) in [int, float]:
                 delay = obj

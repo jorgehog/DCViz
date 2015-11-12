@@ -62,7 +62,7 @@ from mpl_toolkits.mplot3d import Axes3D
 classes_thisDir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.append(classes_thisDir)
 
-from DCViz_sup import DCVizPlotter
+from DCViz_sup import DCVizPlotter, RawAscii
 
 
 #==============================================================================
@@ -1152,7 +1152,8 @@ class canonical_stuff(DCVizPlotter):
               "fig3" : "CV_fig",
               "fig4" : "S_fig",
               "fig5" : "A_fig",
-              "fig6" : "logZ_fig"}
+              "fig6" : "logZ_fig",
+              "fig7" : "logMTVec_fig"}
 
     conversion = {"avgS" : "E_fig",
                   "varS" : "VarE_fig",
@@ -1188,7 +1189,21 @@ class canonical_stuff(DCVizPlotter):
 
             which = self.get_nametag_match(self.familyFileNames[i])
 
-            fig = eval("self.%s" % self.conversion[which])
+            try:
+                fig = eval("self.%s" % self.conversion[which])
+            except:
+                every = 100
+                logM = data[::every]
+                s = (1 + np.arange(len(data)))[::every]
+                dlogM = numpy.diff(logM, 1)
+                self.logMTVec_fig.plot(s[:-1], dlogM)
+                for alpha in [0.1, 0.5, 1, 2, 3]:
+                    self.logMTVec_fig.plot(s, 0.5*alpha*ones_like(s), label=r"$\alpha=%g$" % alpha)
+                self.logMTVec_fig.set_ylim(0, 10)
+                self.logMTVec_fig.set_xlabel("s")
+                self.logMTVec_fig.set_ylabel("M")
+                self.logMTVec_fig.legend()
+                continue
 
             fig.plot(alphas, data, "r-", linewidth=3)
             fig.axes.set_xticks(range(int(round(alphas.max())) + 1))
@@ -1225,6 +1240,8 @@ class boltzmann_ascii(DCVizPlotter):
     transpose = True
 
     hugifyFonts = True
+
+    loader = RawAscii()
 
     def plot(self, data):
 
