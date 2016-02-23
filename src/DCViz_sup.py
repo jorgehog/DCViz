@@ -242,6 +242,7 @@ class DCVizPlotter:
     tickSize = 2
     
     fig_size = None
+    specific_fig_size = None
     relative_fig_size = None
 
     tight = True
@@ -564,7 +565,22 @@ class DCVizPlotter:
 
             self.adjust_maps[fig] = self.make_default_adjust_map()
 
-            s += "self.%s = plab.figure(); " % fig
+            if self.specific_fig_size is not None:
+
+                figsizestr = "figsize="
+                if type(self.specific_fig_size) is dict:
+                    if fig in self.specific_fig_size.keys():
+                        figsizestr += str(self.specific_fig_size[fig])
+                    else:
+                        figsizestr=""
+                else:
+                    self.Error("invalid figsize set: %s" % self.specific_fig_size)
+                    figsizestr = ""
+
+            else:
+                figsizestr = ""
+
+            s += "self.%s = plab.figure(%s); " % (fig, figsizestr)
             s += "self.i%s = self.add_figure(self.%s, '%s'); " % (fig, fig, fig)
         
             subFigs = self.figMap[fig]
