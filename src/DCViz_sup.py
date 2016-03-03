@@ -923,6 +923,10 @@ class DCVizPlotter:
                 self.savedImages[i].append(figname)
 
             i += 1
+
+        if self.argv:
+            with open(pjoin(dirpath, "argv.txt"), "w") as f:
+                f.write(str(self.argv) + "\n")
         
         print "[%s] Figure(s) successfully saved." % "DCViz".center(10)
         
